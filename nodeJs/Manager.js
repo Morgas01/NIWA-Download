@@ -61,6 +61,10 @@
 		return {error:SC.es(rotateError.error),file:rotateError.file.getAbsolutePath()}
 	};
 
+	/**
+	 * This class provides some basic methods to handle downloads.
+	 * It provites a Rest api unter .serviceMethods {@link SERVICEMETHODS} which the downloadTable.js accesses.
+	 */
 	var MANAGER=module.exports=µ.Class({
 		init:function(options)
 		{
