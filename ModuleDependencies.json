@@ -1,0 +1,38 @@
+{
+	"js/checkDbErrors.js": {
+		"deps": [],
+		"uses": [
+			"request",
+			"gui.dialog",
+			"gui.TableData",
+			"Promise"
+		]
+	},
+	"js/downloadTable.js": {
+		"deps": [],
+		"uses": [
+			"gui.TreeTableData",
+			"gui.selectionTable",
+			"DBObj",
+			"Download",
+			"ObjectConnector",
+			"adopt",
+			"Promise",
+			"request",
+			"gui.dialog",
+			"gui.selectionTree",
+			"gui.TableData",
+			"equals",
+			"flatten"
+		]
+	},
+	"lib/Download.js": {
+		"deps": [
+			"DBObj",
+			"DBField"
+		],
+		"uses": [
+			"DBRel"
+		]
+	}
+}
