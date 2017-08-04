@@ -11,7 +11,7 @@
 	"js/downloadTable.js": {
 		"deps": [],
 		"uses": [
-			"gui.TreeTableData",
+			"gui.TreeTableConfig.Select",
 			"gui.selectionTable",
 			"DBObj",
 			"Download",
@@ -21,7 +21,7 @@
 			"request",
 			"gui.dialog",
 			"gui.selectionTree",
-			"gui.TableData",
+			"gui.TableConfig.Select",
 			"equals",
 			"flatten"
 		]
