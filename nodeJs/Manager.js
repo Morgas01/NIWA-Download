@@ -197,6 +197,7 @@
     	add:function(downloads)
     	{
     		if(!Array.isArray(downloads)) downloads=[downloads];
+    		//TODO  set orderIndex
     		return this.dbConnector.then(function(dbc)
 			{
 				return dbc.save(downloads);
@@ -230,10 +231,11 @@
     		.then(()=>
     		{
     			this.notify("add",[{objectType:package.objectType,fields:package.toJSON()}]);
-    			return this.moveTo(package,items);
+    			items.forEach((d,i)=>d.orderIndex=i);
+    			return this.moveTo(package,items,true);
     		});
     	},
-    	moveTo:function(package,items)
+    	moveTo:function(package,items,keepOrder)
     	{
     		return this.fetchParentPackages(package) //get parents until "root"
     		.then(()=> //generate parentUIDs
@@ -253,8 +255,9 @@
 				for(var item of items)
 				{
 					item.setParent("package",package||null);
-					item.orderIndex=null;
+					if(!keepOrder) item.orderIndex=null;
 				}
+				//TODO if(!keepOrder) sort
 				return this.dbConnector.then(dbc=>dbc.save(items))
 				.then(()=>
 				{
@@ -392,6 +395,7 @@
     	},
     	startDownload:function(download)
     	{
+    		µ.logger.debug("startDownload",download.name);
     		if(!this.isDownloadNotRunning(download)) return Promise.reject("download already running");
 
     		return trueOrReject(this.isDownloadReady(Array.from(this.runningDownloadMap.keys()),download))
@@ -452,6 +456,7 @@
     	},
     	_trigger:function()
     	{
+    		µ.logger.debug("_trigger");
     		if(!this.autoTriggger) return Promise.resolve();
     		if(this.maxDownloads!=0&&this.runningDownloadMap.size>=this.maxDownloads) return Promise.resolve();
     		//TODO queue?
@@ -490,10 +495,10 @@
 								return error;
 							});
 						}
-					},null,this).reverse();
+					},null,this).reverse("triggered download");
 				});
     		});
-    		triggerPromise.then(this._trigger(),µ.logger.error);
+    		triggerPromise.then(this._trigger,µ.logger.error);
     		return triggerPromise;
     	}
 	});
