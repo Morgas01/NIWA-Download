@@ -692,4 +692,7 @@
 			}
 		}
 	};
+
+	SMOD("Manager",MANAGER);
+
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

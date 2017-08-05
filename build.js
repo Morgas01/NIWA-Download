@@ -11,7 +11,7 @@ var root				= new SC.File(__dirname);
 
 /*** dependencies ***/
 
-(new (require("Morgas/dependencyParser"))).addSource("js").addSource("lib").parse(".")
+(new (require("Morgas/dependencyParser"))).addSource("js").addSource("lib").addSource("nodeJs").parse(".")
 .then(function(result)
 {
 	root.clone().changePath("ModuleRegister.json").write(JSON.stringify(result.moduleRegister,null,"\t")).then(null,function(err)

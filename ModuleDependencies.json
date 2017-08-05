@@ -34,5 +34,9 @@
 		"uses": [
 			"DBRel"
 		]
+	},
+	"nodeJs/Manager.js": {
+		"deps": [],
+		"uses": []
 	}
 }
