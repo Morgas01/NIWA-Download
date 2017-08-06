@@ -14,7 +14,7 @@
 			"gui.TreeTableConfig.Select",
 			"gui.selectionTable",
 			"DBObj",
-			"Download",
+			"NIWA-Download.Download",
 			"ObjectConnector",
 			"adopt",
 			"Promise",

@@ -1,6 +1,6 @@
 {
-	"checkDbErrors": "js/checkDbErrors.js",
-	"downloadTable": "js/downloadTable.js",
-	"Download": "lib/Download.js",
-	"Manager": "nodeJs/Manager.js"
+	"NIWA-Download.checkDbErrors": "js/checkDbErrors.js",
+	"NIWA-Download.downloadTable": "js/downloadTable.js",
+	"NIWA-Download.Download": "lib/Download.js",
+	"NIWA-Download.Manager": "nodeJs/Manager.js"
 }

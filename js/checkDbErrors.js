@@ -9,7 +9,7 @@
 
 	var cache=null;
 
-	SMOD("checkDbErrors",function checkDbErrors(apiPath="rest/downloads",noCache=false)
+	SMOD("NIWA-Download.checkDbErrors",function checkDbErrors(apiPath="rest/downloads",noCache=false)
 	{
 		if(cache==null||noCache)
 		{

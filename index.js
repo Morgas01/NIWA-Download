@@ -5,16 +5,24 @@
 		dir:__dirname,
 		moduleRegister:require("./ModuleRegister"),
 		moduleDependencies:require("./ModuleDependencies"),
+		lessDir:path.resolve(__dirname,"less"),
 
 		//util
-		register:function(prefix="NIWA-Downloads.")
+		register:function()
 		{
-			µ.addModuleRegister(niwaDownloads.moduleRegister,niwaDownloads.dir,prefix);
+			µ.addModuleRegister(niwaDownloads.moduleRegister,niwaDownloads.dir);
+			return niwaDownloads;
 		},
 		addToDependencyParser:function(parser)
 		{
-			return parser.addModuleRegister(niwaDownloads.moduleRegister,niwaDownloads.dir)
+			parser.addModuleRegister(niwaDownloads.moduleRegister,niwaDownloads.dir)
 			.addModuleDependencies(niwaDownloads.moduleDependencies,niwaDownloads.dir);
+			return niwaDownloads;
+		},
+		registerLess:function()
+		{
+			worker.less.options.paths.push(niwaDownloads.lessDir);
+			return niwaDownloads;
 		}
 	};
 

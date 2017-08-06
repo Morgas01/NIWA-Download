@@ -693,6 +693,6 @@
 		}
 	};
 
-	SMOD("Manager",MANAGER);
+	SMOD("NIWA-Download.Manager",MANAGER);
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

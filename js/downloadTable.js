@@ -4,7 +4,7 @@
 		TreeTableConfig:"gui.TreeTableConfig.Select",
 		selectionTable:"gui.selectionTable",
 		DBObj:"DBObj",
-		Download:"Download",
+		Download:"NIWA-Download.Download",
 		OCON:"ObjectConnector",
 		adopt:"adopt",
 		Promise:"Promise",
@@ -139,6 +139,7 @@
 				var newTable=tableConfig.getTable(data.filter(d=>d.packageID==null).sort(SC.Download.sortByOrderIndex),null,function(row,item)
 				{
 					rowMap.set(item.objectType+item.ID,row);
+					rowMap.set(row,item);
 					row.dataset.state=item.state;
 					row.dataset.type=item.objectType;
 				});
@@ -476,11 +477,16 @@
 						});
 					});
 				});
+			},
+			getSelected:function()
+			{
+				if(!table) return [];
+				else return Array.map(table.querySelectorAll("label > *:checked:first-child"),e=>rowMap.get(e.parentNode));
 			}
 		};
 		return api;
 	};
 	downloadTable.baseColumns=Object.keys(baseColumns);
-	SMOD("downloadTable",downloadTable);
+	SMOD("NIWA-Download.downloadTable",downloadTable);
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);
