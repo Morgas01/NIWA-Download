@@ -3,10 +3,20 @@
 	SC=SC({
 		rq:"request",
 		dlg:"gui.dialog",
-		TableData:"gui.TableData",
+		TableConfig:"gui.TableConfig",
 		Promise:"Promise"
 	});
+	var tableConfig=new SC.TableConfig([
+		{
+			name:"error",
+			fn:function(element,error)
+			{
 
+				element.textContent=JSON.stringify(error,null,"\t").replace(/(?:[^\\])\\n/g,"\n");
+			}
+		},
+		"file"
+	]);
 	var cache=null;
 
 	SMOD("NIWA-Download.checkDbErrors",function checkDbErrors(apiPath="rest/downloads",noCache=false)
@@ -37,18 +47,7 @@
 </div>
 `
 				;
-				element.appendChild( new SC.TableData(errors,[
-					{
-						name:"error",
-						fn:function(element,error)
-						{
-
-							element.textContent=JSON.stringify(error,null,"\t").replace(/(?:[^\\])\\n/g,"\n");
-						}
-					},
-					"file"
-				]).getTable()
-				);
+				element.appendChild(tableConfig.getTable(errors));
 
 			},
 			{
