@@ -5,7 +5,8 @@
 	@failed-color:red;
 	@failed-text-color:white;
 }
-.downloadTable {
+.downloadTable .TableConfig {
+	width:100%;
 	.downloadTable-scope();
 
 	.icon {
@@ -25,9 +26,6 @@
 		}
 	}
 
-	.selectionTable {
-		width:100%;
-	}
 	[data-state="disabled"] {
 		.stripes(@width:39px);
 		&:hover {
