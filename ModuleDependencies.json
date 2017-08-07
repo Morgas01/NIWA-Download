@@ -4,18 +4,19 @@
 		"uses": [
 			"request",
 			"gui.dialog",
-			"gui.TableData",
+			"gui.TableConfig",
 			"Promise"
 		]
 	},
 	"js/downloadTable.js": {
 		"deps": [],
 		"uses": [
+			"gui.TreeTable",
 			"gui.TreeTableConfig.Select",
-			"gui.selectionTable",
-			"DBObj",
 			"NIWA-Download.Download",
-			"ObjectConnector",
+			"rescope",
+			"DBObj",
+			"Organizer",
 			"adopt",
 			"Promise",
 			"request",
@@ -24,6 +25,17 @@
 			"gui.TableConfig.Select",
 			"equals",
 			"flatten"
+		]
+	},
+	"js/test.js": {
+		"deps": [
+			"NIWA-Download.downloadTable",
+			"gui.actionize"
+		],
+		"uses": [
+			"request",
+			"NIWA-Download.Download",
+			"NIWA-Download.checkDbErrors"
 		]
 	},
 	"lib/Download.js": {

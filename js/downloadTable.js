@@ -1,11 +1,12 @@
 (function(µ,SMOD,GMOD,HMOD,SC){
 
 	SC=SC({
-		TreeTableConfig:"gui.TreeTableConfig.Select",
-		selectionTable:"gui.selectionTable",
-		DBObj:"DBObj",
+		TreeTable:"gui.TreeTable",
+		Config:"gui.TreeTableConfig.Select",
 		Download:"NIWA-Download.Download",
-		OCON:"ObjectConnector",
+		rs:"rescope",
+		DBObj:"DBObj",
+		Org:"Organizer",
 		adopt:"adopt",
 		Promise:"Promise",
 		rq:"request",
@@ -15,14 +16,137 @@
 		eq:"equals",
 		flatten:"flatten"
 	});
-	var dateHelper=new Date();
 
+	var orderByIndex=(a,b)=>
+	{
+		var ai=a.orderIndex;
+		if(ai==null)ai=-1;
+		var bi=b.orderIndex;
+		if(bi==null)bi=-1;
+
+		return ai-bi;
+	};
+
+	var DownloadTable=µ.Class({
+		init:function(columns,options)
+		{
+			columns=(columns||Object.keys(DownloadTable.baseColumns)).map(c=>(c in DownloadTable.baseColumns)?DownloadTable.baseColumns[c]:c) //map strings to baseColumn function
+
+			this.options=SC.adopt({
+				apiPath:"rest/downloads",
+				eventName:"downloads",
+				DBClasses:[] // download && package
+			},options);
+
+			this.options.DBClasses.unshift(SC.Download,SC.Download.Package);
+			this.options.DBClasses=this.options.DBClasses.reduce((d,c)=>(d[c.prototype.objectType]=c,d),{}); //translate array into dictionary
+
+			this.treeTable=new SC.TreeTable(new SC.Config(columns));
+			this.element=this.treeTable.getTable();
+			this.element.classList.add("downloadTable");
+
+			this.organizer=new SC.Org();
+			this.organizer.filter("roots",obj=>obj.packageID==null,g=>g.sort("orderIndex",orderByIndex))
+			.group("class","objectType",sub=>sub.map("ID","ID")
+				.group("children","packageID",g=>g.sort("orderIndex",orderByIndex))
+			);
+
+			this.connect();
+		},
+		connect:function()
+		{
+			this.eventSource=new EventSource("event/"+this.options.eventName);
+			window.addEventListener("beforeunload",()=>this.eventSource.close());
+
+			for(var [name,fn] of Object.entries(this.eventHandles))
+			{
+				this.eventSource.addEventListener(name,SC.rs(fn,this));
+			}
+
+			this.eventSource.addEventListener("ping",µ.logger.debug);
+		},
+		eventHandles:{
+			"error":function(error)
+			{
+				if(this.eventSource.readyState==EventSource.CLOSED) alert("connection lost");
+				µ.logger.error(error);
+			},
+			"init":function(event)
+			{
+				µ.logger.info("downloadEvent init:",event);
+				var data=JSON.parse(event.data);
+				var classes=data.map(obj=>
+				{
+					var DBClass=this.options.DBClasses[obj.objectType];
+					if(!DBClass)
+				 	{
+						alert("no class for objectType "+obj.objectType);
+						return null;
+					}
+					return new DBClass().fromJSON(obj.fields);
+				}).filter(µ.constantFunctions.pass);
+				SC.DBObj.connectObjects(classes);
+				this.organizer.add(classes);
+
+				var todo=this.organizer.getFilter("roots").getSort("orderIndex");
+				while(todo.length>0)
+				{
+					var entry=todo.shift();
+					this.treeTable.add(entry,entry.getParent("package"));
+					if(entry instanceof SC.Download.Package)
+					todo.push(...(entry.getItems()));
+				}
+			},
+			"add":function(event)
+			{
+				µ.logger.info("downloadEvent add:",event);
+				this.ocon.db.add(JSON.parse(event.data));
+				//TODO find parent & add
+			},
+			"delete":function(event)
+			{
+				µ.logger.info("downloadEvent delete:",event);
+				var data=JSON.parse(event.data);
+				var promises=[];
+				for(var objectType in data)
+				{
+					if(objectType in this.options.DBClasses)
+					{
+						promises.push(this.ocon.delete(this.options.DBClasses[objectType],data[objectType]));
+					}
+				}
+				return Promise.all(promises)
+				//.then(remove rows)
+			},
+			"update":function(event)
+			{
+				µ.logger.info("downloadEvent update:",event);
+				//TODO update rows
+				updateItems(JSON.parse(event.data)).then(updateTable);
+			},
+			"move":function(event)
+			{
+				µ.logger.info("downloadEvent move:",event);
+				//TODO update & move manually
+				updateItems(JSON.parse(event.data)).then(refreshTable);
+			},
+			"sort":function(event)
+			{
+				µ.logger.info("downloadEvent sort:",event);
+				//TODO sort by hand
+				updateItems(JSON.parse(event.data)).then(refreshTable);
+			}
+		}
+
+	});
+
+	var dateHelper=new Date();
 	var getTimeString=function(time)
 	{
 		dateHelper.setTime(time||0)
 		return ("0"+dateHelper.getUTCHours()).slice(-2)+":"+("0"+dateHelper.getUTCMinutes()).slice(-2)+":"+("0"+dateHelper.getUTCSeconds()).slice(-2);
-	}
-	var baseColumns={
+	};
+	DownloadTable.baseColumns={
 		"icon":function(cell,data)
 		{
 			cell.classList.add("icon");
@@ -58,9 +182,9 @@
 			if(cell.children.length==0)
 			{
 				cell.innerHTML=String.raw
-`<div class="progress-wrapper">
+  `<div class="progress-wrapper">
 	<div class="progress"></div>
-</div>`
+  </div>`
 				;
 			}
 			var percentage=data.size/data.filesize*100;
@@ -98,8 +222,9 @@
 			cell.dataset.size=data.size;
 			cell.dataset.time=data.time;
 		}
-	}
-
+	};
+	SMOD("NIWA-Download.downloadTable",DownloadTable);
+/*
 	var downloadTable=function (columns,options)
 	{
 		options=SC.adopt({
@@ -486,7 +611,6 @@
 		};
 		return api;
 	};
-	downloadTable.baseColumns=Object.keys(baseColumns);
-	SMOD("NIWA-Download.downloadTable",downloadTable);
+	*/
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);
