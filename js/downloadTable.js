@@ -9,9 +9,10 @@
 		Org:"Organizer",
 		prepareItems:"NIWA-Download.prepareItems",
 		arrayRemove:"array.remove",
+		rq:"request",
+		//-----------------
 		adopt:"adopt",
 		Promise:"Promise",
-		rq:"request",
 		dlg:"gui.dialog",
 		stree:"gui.selectionTree",
 		TableConfig:"gui.TableConfig.Select",
@@ -29,6 +30,10 @@
 		return ai-bi;
 	};
 
+	/**
+	 * base column name sets the data-state attribute of the row.
+	 * If you omit this column you have to set it manually.
+	 */
 	var DownloadTable=µ.Class({
 		init:function(columns,options)
 		{
@@ -113,7 +118,7 @@
 				µ.logger.info("downloadEvent update:",event);
 				var data=JSON.parse(event.data);
 				var items=[];
-				for(var type of data)
+				for(var type in data)
 				{
 					for(var entry of data[type])
 					{
@@ -122,8 +127,14 @@
 						items.push(item);
 					}
 				}
-				this.organizer.update(items);
-				this.treeTable.update(items);
+				var parents=new Set(items);
+				for(var child of parents)
+				{
+					var parent=child.getParent("package")
+					if(parent) parents.add(parent);
+					this.treeTable.update(child);
+				}
+				this.organizer.update(parents);
 			},
 			"move":function(event)
 			{
@@ -232,6 +243,19 @@
 					downloads:SC.prepareItems.toDictionary(downloads,false)
 				})
 			});
+		},
+		trigger:function(items)
+		{
+			if(!Array.isArray(items)) items=[items];
+			//TODO
+		},
+		autoTrigger:function(nextState)
+		{
+			return SC.rq({
+				url:this.options.apiPath+"/autoTrigger",
+				data:JSON.stringify(!!nextState),
+				method:"POST"
+			});
 		}
 
 	});
@@ -245,10 +269,13 @@
 	DownloadTable.baseColumns={
 		"icon":function(cell,data)
 		{
-			cell.classList.add("icon");
 			cell.classList.add(data instanceof SC.Download?"download":"package");
 		},
-		"name":"name",
+		"name":function(cell,data)
+		{
+			cell.textContent=data.name;
+			cell.parentNode.dataset.state=data.state;
+		},
 		"filepath":function filepath(cell,data)
 		{
 			if(data.filepath)
@@ -290,7 +317,7 @@
 		},
 		"speed":function speed(cell,data)
 		{
-			if (cell.dataset.size&&cell.dataset.time)
+			if (cell.dataset.size&&cell.dataset.time&&data instanceof SC.Download)
 			{
 				cell.dataset.title=SC.Download.formatFilesize(data.getCurrentSpeed(cell.dataset.size,cell.dataset.time))+"/s";
 			}
@@ -301,22 +328,29 @@
 		},
 		"time":function time(cell,data)
 		{
-
-			if (cell.dataset.size&&cell.dataset.time)
+			if(data instanceof SC.Download)
 			{
-				var remaining=data.filesize-data.size;
-				var title=getTimeString(remaining/data.getCurrentSpeed(cell.dataset.size,cell.dataset.time)*1000)+"\n";
-				title+=getTimeString(remaining/data.getSpeed()*1000);
+				if (cell.dataset.size&&cell.dataset.time)
+				{
+					var remaining=data.filesize-data.size;
+					var title=getTimeString(remaining/data.getCurrentSpeed(cell.dataset.size,cell.dataset.time)*1000)+"\n";
+					title+=getTimeString(remaining/data.getSpeed()*1000);
 
-				cell.dataset.title=title;
+					cell.dataset.title=title;
+				}
+				if(data.time)
+				{
+					cell.textContent=getTimeString(data.time-data.startTime);
+				}
+
+				cell.dataset.size=data.size;
+				cell.dataset.time=data.time;
 			}
-			if(data.time)
+			else if(data.getSpeed()>0)
 			{
-				cell.textContent=getTimeString(data.time-data.startTime);
+				var remaining=data.filesize-data.size
+				cell.textContent=getTimeString(remaining/data.getSpeed()*1000);
 			}
-
-			cell.dataset.size=data.size;
-			cell.dataset.time=data.time;
 		}
 	};
 	SMOD("NIWA-Download.downloadTable",DownloadTable);
