@@ -238,15 +238,20 @@
 						});
 						return dbc.save(items).then(()=>
 						{
+							var hasNewItems=false;
 							items.forEach(d=>
 							{
 								if(wasPersisted.get(d)) this.notify("move",{
 									parent:SC.prepareItems.toClassID(package),
 									items:SC.prepareItems.toClassIDs([d]),
 								});
-								else this.notify("add",SC.prepareItems.toDictionary([d],false));
-
+								else
+								{
+									this.notify("add",SC.prepareItems.toDictionary([d],false));
+									hasNewItems=true;
+								}
 							});
+							if(hasNewItems) this._trigger();
 						});
 					});
 				}
