@@ -17,6 +17,7 @@
     	rescope:"rescope",
     	flatten:"flatten",
     	itAs:"iterateAsync",
+    	prepareItems:require.bind(null,"../lib/prepareItems"),
     });
 
     var delegateID=0;
@@ -136,7 +137,17 @@
 				});
 			}
 
-			this.notify("init",null);
+			this.notify=worker.eventSource(this.eventName,()=>
+				this.dbConnector.then(dbc=>
+				{
+					var dict=dbc.db.getGroupValues("objectType");
+					for (var type in dict)
+					{
+						dict[type]=dict[type].map(o=>o.fields);
+					}
+					return dict;
+				})
+			);
 
 			if(options.download) this.download=options.download;
 			if(options.filter) this.isDownloadReady=options.filter;
@@ -162,27 +173,7 @@
 			this._trigger();
 		},
 		getMaxDownloads:function(){return this.maxDownloads},
-		notify:function(event,data)
-		{
-			this.dbConnector.then((dbc)=>
-			{
-				worker.event(this.eventName,dbc.db.getValues(),event,data);
-			});
-		},
-		mapDictionary:function(dict)
-		{
-			var rtn=[];
-			for(var type in dict)
-			{
-				var itemClass=this.DBClassDictionary[type];
-				if(!itemClass) throw "unknown class: "+type;
-				for(var item of dict[type])
-				{
-					rtn.push(new itemClass().fromJSON(item));
-				}
-			}
-			return rtn;
-		},
+		notify:null, //eventSource in init
 		loadDictionary:function(dict)
 		{
 			return this.dbConnector.then(dbc=>
@@ -204,11 +195,11 @@
 			}).then(()=>
 			{
 				this.dbErrors.length=0;
-				this.notify("add",downloads.map(d=>({objectType:d.objectType,fields:d.toJSON()})));
+				this.notify("add",SC.prepareItems.toDictionary(downloads,false));
 				this._trigger();
 				return true;
-			},
-			(error)=>
+			})
+			.catch(error=>
 			{
 				error={error:SC.es(error),file:this.file.getAbsolutePath()};
 				µ.logger.error(error,"failed to add downloads");
@@ -227,13 +218,40 @@
 
     		if(parent) parent.addChild("subPackages",package);
 
-    		return this.dbConnector.then(dbc=>dbc.save(package))
-    		.then(()=>
+    		return this.dbConnector.then(dbc=>
     		{
-    			this.notify("add",[{objectType:package.objectType,fields:package.toJSON()}]);
-    			items.forEach((d,i)=>d.orderIndex=i);
-    			return this.moveTo(package,items,true);
-    		});
+    			var p=dbc.save(package)
+				.then(()=>
+				{
+					this.notify("add",SC.prepareItems.toDictionary([package],false));
+				});
+				if(items&&items.length>0)
+				{
+					p=p.then(()=>
+					{
+						var wasPersisted=new Map()
+						items.forEach((d,i)=>
+						{
+							d.orderIndex=i;
+							d.setParent("package",package);
+							wasPersisted.set(d,d.ID!=null);
+						});
+						return dbc.save(items).then(()=>
+						{
+							items.forEach(d=>
+							{
+								if(wasPersisted.get(d)) this.notify("move",{
+									parent:SC.prepareItems.toClassID(package),
+									items:SC.prepareItems.toClassIDs([d]),
+								});
+								else this.notify("add",SC.prepareItems.toDictionary([d],false));
+
+							});
+						});
+					});
+				}
+				return p;
+			});
     	},
     	moveTo:function(package,items,keepOrder)
     	{
@@ -261,7 +279,10 @@
 				return this.dbConnector.then(dbc=>dbc.save(items))
 				.then(()=>
 				{
-					this.notify("move",prepareItems(items));
+					this.notify("move",{
+						parent:SC.prepareItems.toClassID(package),
+						items:SC.prepareItems.toClassIDs(items),
+					});
 					this._trigger();
 				});
 			});
@@ -283,7 +304,7 @@
 				 	}
 					return dbc.save(downloads).then(()=>
 					{
-						this.notify("update",prepareItems(downloads));
+						this.notify("update",SC.prepareItems.toDictionary(downloads,false));
 						if(isPending) this._trigger();
 					});
 				})
@@ -331,7 +352,7 @@
 				});
 				return Promise.all(filteredItems)
 				.then(deletion=>Array.prototype.concat.apply(Array.prototype,deletion))//flatten
-				.then(items=>prepareItems(items,true))
+				.then(items=>SC.prepareItems.toDictionary(items,true))
 				.then(dict=>
 				{
 					var deletions=Object.keys(dict)
@@ -517,16 +538,6 @@
     	}
     	return Promise.resolve(param.data);
     };
-	var prepareItems=function(items,forDelete)
-	{
-		var rtn={};
-		for(var item of items)
-		{
-			if(!rtn[item.objectType])rtn[item.objectType]=[];
-			rtn[item.objectType].push(forDelete?item.ID:item);
-		}
-		return rtn;
-	};
 	var trueOrReject=function(value)
 	{
 		if (SC.Promise.isThenable(value))
@@ -552,7 +563,7 @@
 			return checkRequest(param,"POST")
 			.then(data=>
 			{
-				var downloads=this.mapDictionary(data);
+				var downloads=SC.prepareItems.fromDictionary(data,this.DBClassDictionary);
 				return this.add(downloads);
 			});
 		},
@@ -563,7 +574,7 @@
 			{
 				var packageClass=this.DBClassDictionary[data.packageClass||"Package"];
 				if(!packageClass) throw "unknown package class: "+data.packageClass;
-				var downloads=this.mapDictionary(data.downloads);
+				var downloads=SC.prepareItems.fromDictionary(data.downloads,this.DBClassDictionary);
 
 				return this.addWithPackage(packageClass,data.packageName,downloads);
 			});
@@ -673,7 +684,7 @@
 				.then(sortedItem=>
 				{
 					return this.dbConnector.then(dbc=>dbc.save(sortedItem))
-					.then(()=>this.notify("sort",prepareItems(sortedItem)));
+					.then(()=>this.notify("sort",SC.prepareItems.toClassIDs(sortedItem)));
 				});
 			});
 		},

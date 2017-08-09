@@ -17,6 +17,7 @@
 			"rescope",
 			"DBObj",
 			"Organizer",
+			"NIWA-Download.prepareItems",
 			"adopt",
 			"Promise",
 			"request",
@@ -46,6 +47,10 @@
 		"uses": [
 			"DBRel"
 		]
+	},
+	"lib/prepareItems.js": {
+		"deps": [],
+		"uses": []
 	},
 	"nodeJs/Manager.js": {
 		"deps": [],

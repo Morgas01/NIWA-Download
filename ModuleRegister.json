@@ -2,5 +2,6 @@
 	"NIWA-Download.checkDbErrors": "js/checkDbErrors.js",
 	"NIWA-Download.downloadTable": "js/downloadTable.js",
 	"NIWA-Download.Download": "lib/Download.js",
+	"NIWA-Download.prepareItems": "lib/prepareItems.js",
 	"NIWA-Download.Manager": "nodeJs/Manager.js"
 }

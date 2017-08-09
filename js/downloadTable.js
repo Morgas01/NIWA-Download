@@ -7,6 +7,8 @@
 		rs:"rescope",
 		DBObj:"DBObj",
 		Org:"Organizer",
+		prepareItems:"NIWA-Download.prepareItems",
+		arrayRemove:"array.remove",
 		adopt:"adopt",
 		Promise:"Promise",
 		rq:"request",
@@ -41,7 +43,7 @@
 			this.options.DBClasses.unshift(SC.Download,SC.Download.Package);
 			this.options.DBClasses=this.options.DBClasses.reduce((d,c)=>(d[c.prototype.objectType]=c,d),{}); //translate array into dictionary
 
-			this.treeTable=new SC.TreeTable(new SC.Config(columns));
+			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems()}));
 			this.element=this.treeTable.getTable();
 			this.element.classList.add("downloadTable");
 
@@ -73,69 +75,163 @@
 			},
 			"init":function(event)
 			{
+				this.treeTable.clear();
+				this.organizer.clear();
+
 				µ.logger.info("downloadEvent init:",event);
 				var data=JSON.parse(event.data);
-				var classes=data.map(obj=>
-				{
-					var DBClass=this.options.DBClasses[obj.objectType];
-					if(!DBClass)
-				 	{
-						alert("no class for objectType "+obj.objectType);
-						return null;
-					}
-					return new DBClass().fromJSON(obj.fields);
-				}).filter(µ.constantFunctions.pass);
-				SC.DBObj.connectObjects(classes);
-				this.organizer.add(classes);
+				var items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
+				SC.DBObj.connectObjects(items);
+				this.organizer.add(items);
 
-				var todo=this.organizer.getFilter("roots").getSort("orderIndex");
-				while(todo.length>0)
-				{
-					var entry=todo.shift();
-					this.treeTable.add(entry,entry.getParent("package"));
-					if(entry instanceof SC.Download.Package)
-					todo.push(...(entry.getItems()));
-				}
+				this.organizer.getFilter("roots").getSort("orderIndex")
+				.forEach(entry=>this.treeTable.add(entry));
 			},
 			"add":function(event)
 			{
 				µ.logger.info("downloadEvent add:",event);
-				this.ocon.db.add(JSON.parse(event.data));
-				//TODO find parent & add
+				var data=JSON.parse(event.data);
+				var items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
+				var other=this.organizer.getValues();
+				this.organizer.add(items);
+				items.forEach(item=>
+				{
+					item.connectObjects(other);
+					this.treeTable.add(item,item.getParent("package"));
+				});
 			},
 			"delete":function(event)
 			{
 				µ.logger.info("downloadEvent delete:",event);
 				var data=JSON.parse(event.data);
-				var promises=[];
-				for(var objectType in data)
-				{
-					if(objectType in this.options.DBClasses)
-					{
-						promises.push(this.ocon.delete(this.options.DBClasses[objectType],data[objectType]));
-					}
-				}
-				return Promise.all(promises)
-				//.then(remove rows)
+				var items=data.map(d=>this.findByClassID(d.objectType,d.ID));
+				this.organizer.remove(items);
+				this.treeTable.remove(items);
 			},
 			"update":function(event)
 			{
 				µ.logger.info("downloadEvent update:",event);
-				//TODO update rows
-				updateItems(JSON.parse(event.data)).then(updateTable);
+				var data=JSON.parse(event.data);
+				var items=[];
+				for(var type of data)
+				{
+					for(var entry of data[type])
+					{
+						var item=this.findByClassID(type,entry.ID);
+						item.fromJSON(entry);
+						items.push(item);
+					}
+				}
+				this.organizer.update(items);
+				this.treeTable.update(items);
 			},
 			"move":function(event)
 			{
 				µ.logger.info("downloadEvent move:",event);
-				//TODO update & move manually
-				updateItems(JSON.parse(event.data)).then(refreshTable);
+				var data=JSON.parse(event.data);
+				var items=data.items.map(d=>this.findByClassID(d.objectType,d.ID));
+				var oldParent=items[0].getParent("package");
+				var oldParentRow=this.treeTable.change(oldParent);
+				var parent=this.findByClassID(data.parent);
+				var parentRow=this.treeTable.change(parent);
+
+				var rows=items.map(item=>
+				{
+					var row=this.treeTable.change(item);
+					if(oldParent)
+					{
+						oldParent.removeChild("package",item);
+						SC.arrayRemove(oldParentRow.treeChildren,row);
+					}
+					if(parent)
+					{
+						parent.addChild("package",item);
+						parentRow.treeChildren.push(row);
+					}
+					else
+					{
+						item.setParent("package",null);
+						this.treeTable.tableBody.appendChild(row);
+					}
+
+					return row;
+				});
+
+				this.organizer.update(items);
+				if(parent)
+				{
+					if(parentRow.isExpanded())
+					{
+						parentRow.expand(false);
+						parentRow.expand(true);
+					}
+				}
+				else
+				{
+					rows.forEach(row=>
+					{
+						if(row.isExpanded())
+						{
+							row.expand(false);
+							row.expand(true);
+						}
+					});
+				}
 			},
 			"sort":function(event)
 			{
 				µ.logger.info("downloadEvent sort:",event);
-				//TODO sort by hand
-				updateItems(JSON.parse(event.data)).then(refreshTable);
+				var data=JSON.parse(event.data);
+				var items=data.map(d=>this.findByClassID(d));
+				var parent=items[0].getParent("package");
+
+				if(parent)
+				{
+					var parentRow=this.treeTable.change(oldParent);
+					var wasExpanded=parentRow.isExpanded();
+					parentRow.expand(false);
+					parentRow.treeChildren=items.map(i=>this.treeTable.change(i));
+					if(wasExpanded)
+					{
+						parentRow.expand(true);
+					}
+				}
+				else
+				{
+					items.forEach(item=>
+					{
+						var row=this.treeTable.change(item);
+						this.treeTable.tableBody.appendChild(row);
+						if(row.isExpanded())
+						{
+							row.expand(false);
+							row.expand(true);
+						}
+					});
+				}
 			}
+		},
+		findByClassID:function(objectType,ID)
+		{
+			return this.organizer.getGroupPart("class",objectType).getMap("ID")[ID];
+		},
+		add:function(downloads)
+		{
+			return SC.rq({
+				url:this.options.apiPath+"/add",
+				data:JSON.stringify(SC.prepareItems.toDictionary(downloads,false))
+			});
+		},
+		addWithPackage:function(packageName,packageClass="Package",downloads)
+		{
+			return SC.rq({
+				url:this.options.apiPath+"/addWithPackage",
+				data:JSON.stringify({
+					packageName:packageName,
+					packageClass:packageClass,
+					downloads:SC.prepareItems.toDictionary(downloads,false)
+				})
+			});
 		}
 
 	});
