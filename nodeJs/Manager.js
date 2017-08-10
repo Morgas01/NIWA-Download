@@ -185,6 +185,17 @@
 			)
 			.then(SC.flatten);
 		},
+		loadClassIDs:function(classIDs)
+		{
+			return this.dbConnector.then(dbc=>
+				Promise.all(
+					SC.it(classIDs,(i,classID)=>
+						dbc.load(this.DBClassDictionary[classID.objectType],{ID:classID.ID})
+					)
+				)
+			)
+			.then(SC.flatten);
+		},
     	add:function(downloads)
     	{
     		if(!Array.isArray(downloads)) downloads=[downloads];
@@ -643,7 +654,7 @@
 			{
 				if(!data.items||Object.keys(data.items).length==0) return Promise.reject("no items selected");
 				return new SC.Promise([
-					!data.target?null:this.loadDictionary(data.target).then(t=>t[0],function(e)
+					!data.target?null:this.loadClassIDs([data.target]).then(t=>t[0],function(e)
 					{
 						µ.logger.error(e);
 						return null;

@@ -23,10 +23,13 @@
 	var orderByIndex=(a,b)=>
 	{
 		var ai=a.orderIndex;
-		if(ai==null)ai=-1;
 		var bi=b.orderIndex;
-		if(bi==null)bi=-1;
-
+		if(ai==null)
+		{
+			if(bi==null) return 0;
+			return 1;
+		}
+		if(bi==null) return -1;
 		return ai-bi;
 	};
 
@@ -54,9 +57,7 @@
 
 			this.organizer=new SC.Org();
 			this.organizer.filter("roots",obj=>obj.packageID==null,g=>g.sort("orderIndex",orderByIndex))
-			.group("class","objectType",sub=>sub.map("ID","ID")
-				.group("children","packageID",g=>g.sort("orderIndex",orderByIndex))
-			);
+			.group("class","objectType",sub=>sub.map("ID","ID"));
 
 			this.connect();
 		},
@@ -97,11 +98,14 @@
 				µ.logger.info("downloadEvent add:",event);
 				var data=JSON.parse(event.data);
 				var items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
-				var other=this.organizer.getValues();
 				this.organizer.add(items);
 				items.forEach(item=>
 				{
-					item.connectObjects(other);
+					if(item.packageID!=null)
+					{
+						var parent=this.findByClassID(item.relations["package"].relatedClass.prototype.objectType,item.packageID);
+						parent.connectObjects([item]);
+					}
 					this.treeTable.add(item,item.getParent("package"));
 				});
 			},
@@ -109,9 +113,10 @@
 			{
 				µ.logger.info("downloadEvent delete:",event);
 				var data=JSON.parse(event.data);
-				var items=data.map(d=>this.findByClassID(d.objectType,d.ID));
+				var items=[];
+				for(var type in data) for(let ID of data[type]) items.push(this.findByClassID(type,ID));
 				this.organizer.remove(items);
-				this.treeTable.remove(items);
+				items.forEach(i=>this.treeTable.remove(i));
 			},
 			"update":function(event)
 			{
@@ -141,14 +146,20 @@
 				µ.logger.info("downloadEvent move:",event);
 				var data=JSON.parse(event.data);
 				var items=data.items.map(d=>this.findByClassID(d.objectType,d.ID));
-				var oldParent=items[0].getParent("package");
-				var oldParentRow=this.treeTable.change(oldParent);
-				var parent=this.findByClassID(data.parent);
-				var parentRow=this.treeTable.change(parent);
+				var parent=null;
+				var parentRow=null;
+				if(data.parent)
+				{
+					parent=this.findByClassID(data.parent.objectType,data.parent.ID);
+					parentRow=this.treeTable.change(parent);
+				}
 
 				var rows=items.map(item=>
 				{
 					var row=this.treeTable.change(item);
+					row.remove();
+					var oldParent=item.getParent("package");
+					var oldParentRow=this.treeTable.change(oldParent);
 					if(oldParent)
 					{
 						oldParent.removeChild("package",item);
@@ -165,6 +176,7 @@
 						this.treeTable.tableBody.appendChild(row);
 					}
 
+					//TODO change indent
 					return row;
 				});
 
@@ -196,9 +208,12 @@
 				var items=data.map(d=>this.findByClassID(d));
 				var parent=items[0].getParent("package");
 
+				for(let i=0;i<items.length;i++) items[i].orderIndex=i;
+				this.organizer.update(items);
+
 				if(parent)
 				{
-					var parentRow=this.treeTable.change(oldParent);
+					var parentRow=this.treeTable.change(parent);
 					var wasExpanded=parentRow.isExpanded();
 					parentRow.expand(false);
 					parentRow.treeChildren=items.map(i=>this.treeTable.change(i));
@@ -224,40 +239,120 @@
 		},
 		findByClassID:function(objectType,ID)
 		{
+			if(objectType==null||ID==null) return null;
 			return this.organizer.getGroupPart("class",objectType).getMap("ID")[ID];
+		},
+		apiCall:function(apiMethod,data,httpMethod="POST")
+		{
+			return SC.rq({
+				url:this.options.apiPath+"/"+apiMethod,
+				data:JSON.stringify(data),
+				method:httpMethod
+			});
 		},
 		add:function(downloads)
 		{
-			return SC.rq({
-				url:this.options.apiPath+"/add",
-				data:JSON.stringify(SC.prepareItems.toDictionary(downloads,false))
-			});
+			return this.apiCall("add",SC.prepareItems.toDictionary(downloads,false));
 		},
 		addWithPackage:function(packageName,packageClass="Package",downloads)
 		{
-			return SC.rq({
-				url:this.options.apiPath+"/addWithPackage",
-				data:JSON.stringify({
-					packageName:packageName,
-					packageClass:packageClass,
-					downloads:SC.prepareItems.toDictionary(downloads,false)
-				})
+			return this.apiCall("addWithPackage",{
+				packageName:packageName,
+				packageClass:packageClass,
+				downloads:SC.prepareItems.toDictionary(downloads,false)
 			});
+		},
+		createPackage:function()
+		{
+			//TODO
+		},
+		getSelected:function()
+		{
+			return this.treeTable.getSelected();
+		},
+		autoTrigger:function(nextState)
+		{
+			return this.apiCall("autoTrigger",!!nextState);
 		},
 		trigger:function(items)
 		{
 			if(!Array.isArray(items)) items=[items];
-			//TODO
+			this.apiCall("trigger",SC.prepareItems.toDictionary(items));
 		},
-		autoTrigger:function(nextState)
+		triggerSelected:function()
 		{
-			return SC.rq({
-				url:this.options.apiPath+"/autoTrigger",
-				data:JSON.stringify(!!nextState),
-				method:"POST"
-			});
-		}
-
+			var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.trigger(selected);
+		},
+		remove:function(items)
+		{
+			return this.apiCall("delete",SC.prepareItems.toDictionary(items),"DELETE");
+		},
+		removeSelected:function()
+		{
+			var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.remove(selected);
+		},
+		disable:function(items)
+		{
+			return this.apiCall("disable",SC.prepareItems.toDictionary(items),"PUT");
+		},
+		disableSelected:function()
+		{
+			var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.disable(selected);
+		},
+        reset:function(items)
+        {
+        	return this.apiCall("reset",SC.prepareItems.toDictionary(items),"PUT");
+        },
+        resetSelected:function()
+        {
+        	var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.reset(selected);
+        },
+        enable:function(items)
+        {
+        	return this.apiCall("enable",SC.prepareItems.toDictionary(items),"PUT");
+        },
+        enableSelected:function()
+        {
+        	var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.enable(selected);
+        },
+        abort:function(items)
+        {
+        	return this.apiCall("abort",SC.prepareItems.toDictionary(items),"PUT");
+        },
+        abortSelected:function()
+        {
+        	var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.abort(selected);
+        },
+        moveTo:function(items,target)
+        {
+        	return this.apiCall("moveTo",{
+				target:SC.prepareItems.toClassID(target),
+				items:SC.prepareItems.toDictionary(items)
+			},"PUT");
+        },
+        move:function(items)
+        {
+        	return DownloadTable.moveDialog(items,this.organizer.getFilter("roots").getSort("orderIndex"))
+        	.then(target=>this.moveTo(items,target));
+        },
+        moveSelected:function()
+        {
+        	var selected=this.getSelected();
+			if(selected.length==0) return Promise.resolve();
+			return this.move(selected);
+        }
 	});
 
 	var dateHelper=new Date();
@@ -305,9 +400,9 @@
 			if(cell.children.length==0)
 			{
 				cell.innerHTML=String.raw
-  `<div class="progress-wrapper">
-	<div class="progress"></div>
-  </div>`
+`<div class="progress-wrapper">
+<div class="progress"></div>
+</div>`
 				;
 			}
 			var percentage=data.size/data.filesize*100;
@@ -352,6 +447,53 @@
 				cell.textContent=getTimeString(remaining/data.getSpeed()*1000);
 			}
 		}
+	};
+	DownloadTable.moveDialog=function(items,roots)
+	{
+		if(items.length==0) return Promise.resolve();
+		roots=roots.filter(r=>r instanceof SC.Download.Package);
+		var root={
+			name:"root",
+			getChildren:()=>roots
+		};
+		var tree=SC.stree(root,function(element,package)
+		{
+			element.textContent=package.name;
+			//TODO disable selected packages and its children
+		},{
+			childrenGetter:c=>c.getChildren("subPackages"),
+			radioName:"moveTarget"
+		});
+		tree.expand(true,true);
+		return new SC.Promise(function(signal)
+		{
+			SC.dlg(function(container)
+			{
+				container.appendChild(tree);
+				var okBtn=document.createElement("button");
+				okBtn.textContent=okBtn.dataset.action="OK";
+				container.appendChild(okBtn);
+				var closeBtn=document.createElement("button");
+				closeBtn.textContent=closeBtn.dataset.action="cancel";
+				container.appendChild(closeBtn);
+			},{
+				modal:true,
+				actions:{
+					OK:function()
+					{
+						var target=tree.getSelected()[0];
+						if(target===root) target=null;
+						signal.resolve(target);
+						this.close();
+					},
+					cancel:function()
+					{
+						this.close();
+						signal.reject("cancel");
+					}
+				}
+			});
+		});
 	};
 	SMOD("NIWA-Download.downloadTable",DownloadTable);
 /*
