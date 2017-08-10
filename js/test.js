@@ -42,10 +42,6 @@
         {
 			actionResponse(downloadTable.autoTrigger(false));
         },
-        trigger:function()
-        {
-			//TODO
-        },
         add:function()
         {
 			var nr=downloadCounter++;
@@ -79,35 +75,39 @@
         },
         package:function()
         {
-
+			//TODO
+        },
+        trigger:function()
+        {
+        	actionResponse(downloadTable.triggerSelected());
         },
         remove:function()
         {
-
+			actionResponse(downloadTable.removeSelected());
         },
         disable:function()
         {
-
+			actionResponse(downloadTable.disableSelected());
         },
         reset:function()
         {
-
+			actionResponse(downloadTable.resetSelected());
         },
         enable:function()
         {
-
+			actionResponse(downloadTable.enableSelected());
         },
         move:function()
         {
-
+			actionResponse(downloadTable.moveSelected());
         },
         sort:function()
         {
-
+			actionResponse(downloadTable.sortSelected());
         },
         abort:function()
         {
-
+			actionResponse(downloadTable.abortSelected());
         },
 	},document.getElementById("actions"));
 
