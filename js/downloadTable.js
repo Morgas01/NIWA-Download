@@ -51,7 +51,7 @@
 			this.options.DBClasses.unshift(SC.Download,SC.Download.Package);
 			this.options.DBClasses=this.options.DBClasses.reduce((d,c)=>(d[c.prototype.objectType]=c,d),{}); //translate array into dictionary
 
-			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems()}));
+			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems(),control:true}));
 			this.element=this.treeTable.getTable();
 			this.element.classList.add("downloadTable");
 
