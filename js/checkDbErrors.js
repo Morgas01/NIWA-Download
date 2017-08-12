@@ -6,21 +6,25 @@
 		TableConfig:"gui.TableConfig",
 		Promise:"Promise"
 	});
-	var tableConfig=new SC.TableConfig([
-		{
-			name:"error",
-			fn:function(element,error)
-			{
-
-				element.textContent=JSON.stringify(error,null,"\t").replace(/(?:[^\\])\\n/g,"\n");
-			}
-		},
-		"file"
-	]);
+	var tableConfig;
 	var cache=null;
 
 	SMOD("NIWA-Download.checkDbErrors",function checkDbErrors(apiPath="rest/downloads",noCache=false)
 	{
+		if(!tableConfig)
+		{
+			tableConfig=new SC.TableConfig([
+				{
+					name:"error",
+					fn:function(element,error)
+					{
+
+						element.textContent=JSON.stringify(error,null,"\t").replace(/(?:[^\\])\\n/g,"\n");
+					}
+				},
+				"file"
+			]);
+		}
 		if(cache==null||noCache)
 		{
 			cache=SC.rq.json(apiPath+"/errors")
