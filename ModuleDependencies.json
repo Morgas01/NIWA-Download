@@ -18,25 +18,15 @@
 			"DBObj",
 			"Organizer",
 			"NIWA-Download.prepareItems",
+			"array.remove",
+			"request",
 			"adopt",
 			"Promise",
-			"request",
 			"gui.dialog",
 			"gui.selectionTree",
 			"gui.TableConfig.Select",
 			"equals",
 			"flatten"
-		]
-	},
-	"js/test.js": {
-		"deps": [
-			"NIWA-Download.downloadTable",
-			"gui.actionize"
-		],
-		"uses": [
-			"request",
-			"NIWA-Download.Download",
-			"NIWA-Download.checkDbErrors"
 		]
 	},
 	"lib/Download.js": {

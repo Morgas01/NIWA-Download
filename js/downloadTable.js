@@ -495,7 +495,7 @@
 			});
 		});
 	};
-	SMOD("NIWA-Download.downloadTable",DownloadTable);
+	SMOD("NIWA-Download.DownloadTable",DownloadTable);
 /*
 	var downloadTable=function (columns,options)
 	{
