@@ -51,6 +51,7 @@
 			update.ID=update.remoteID;
 			delete update.remoteID;
 			delete update.appName;
+			delete update.packageID;
 			delegateInfo.onUpdate.call(delegateInfo.manager,update);
 			if(update.state!==SC.Download.states.RUNNING) delegateMap.delete(update.ID);
 		}
@@ -119,19 +120,20 @@
 							dbErrors.push({file:result.file.getAbsolutePath(),error:"loaded"});
 							µ.logger.warn({errors:dbErrors},"errors loading file "+result.file.getAbsolutePath());
 						}
-						return this;
+						return this;//connector
 					},
-					(errors)=>
+					function(errors)
 					{
 						if(errors.length==0)
-						{
-							errors.push({file:storageFile,error:"file not found"});
+						{// no files
+							//errors.push({file:storageFile,error:"file not found"});
+							return this;
 						}
 						Array.prototype.push.apply(dbErrors,errors.map(rotateErrorMapper));
 						dbErrors.push({file:null,error:"could not load any DB file"});
 						µ.logger.warn({errors:dbErrors},"could not load any DB file");
 
-						return this;
+						return this;//connector
 					});
 				});
 				this.dbConnector.catch((error)=>
@@ -468,7 +470,11 @@
 					this.dbConnector.then(dbc=>
 					{
 						var p;
-						if(download.appName)p=dbc.delete(this.DBClassDictionary[download.objectType],[download]).catch(e=>µ.logger.error({error:e},"failed to delete completed download"));
+						if(download.appName)
+						{
+							p=dbc.delete(this.DBClassDictionary[download.objectType],[download]).catch(e=>µ.logger.error({error:e},"failed to delete completed delegate download"));
+							this.notify("delete",SC.prepareItems.toDictionary([download]));
+						}
 						else p=dbc.save(download).catch(e=>µ.logger.error({error:e},"failed to save completed download"));
 						this.updateDownload(download);
 						p.then(this._trigger);
@@ -483,12 +489,14 @@
 			data.download.remoteID=data.ID;
 			data.download.appName=appName;
 			delete data.download.ID;
+			delete data.download.packageID;
 			var downloadClass=this.DBClassDictionary[data.objectType];
 			if(!downloadClass) return Promise.reject("unknown class: "+data.download.objectType);
 			var download=new downloadClass();
 			download.fromJSON(data.download);
 
 			return trueOrReject(this.accept(download,appName))
+			.then(()=>this.add([download]))
 			.then(()=>this.startDownload(download));
     	},
     	delegateDownload:function(appName,download,onUpdate)
