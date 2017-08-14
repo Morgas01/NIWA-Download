@@ -1,6 +1,6 @@
 (function(µ,SMOD,GMOD,HMOD,SC){
 
-	var DownloadTable=GMOD("NIWA-Download.downloadTable");
+	var DownloadTable=GMOD("NIWA-Download.DownloadTable");
 	var actionize=GMOD("gui.actionize");
 	SC=SC({
 		rq:"request",

@@ -8,7 +8,7 @@
 	var dir=new File(__dirname).changePath("..").getAbsolutePath();
 
 	var restService=µ.getModule("dependencyManager")(["js/test.js"],"js");
-	restService.dependencyParser.addModuleRegister(moduleRegister,dir).addModuleDependencies(moduleDependencies,dir);
+	restService.addResource(moduleRegister,moduleDependencies,dir,"NIWA-Download");
 
 	module.exports=restService;
 
