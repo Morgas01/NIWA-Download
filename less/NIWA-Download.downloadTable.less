@@ -99,7 +99,8 @@
 	}
 }
 .sortDialog {
-	height:100%;
+	min-height:75vh;
+	min-width:25vw;
 	.downloadTable-scope();
 	display:flex;
 	flex-direction:column;
@@ -120,6 +121,10 @@
 		}
 		.sortTableScroll {
 			overflow:auto;
+			flex-grow:1;
+			.TableConfig.Select{
+				width:100%;
+			 }
 		}
 	}
 	.dialogActions {

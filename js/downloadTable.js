@@ -10,14 +10,11 @@
 		prepareItems:"NIWA-Download.prepareItems",
 		arrayRemove:"array.remove",
 		rq:"request",
-		//-----------------
 		adopt:"adopt",
-		Promise:"Promise",
 		dlg:"gui.dialog",
 		stree:"gui.selectionTree",
 		TableConfig:"gui.TableConfig.Select",
-		eq:"equals",
-		flatten:"flatten"
+		Table:"gui.Table"
 	});
 
 	var orderByIndex=(a,b)=>
@@ -162,12 +159,12 @@
 					var oldParentRow=this.treeTable.change(oldParent);
 					if(oldParent)
 					{
-						oldParent.removeChild("package",item);
+						oldParent.removeChild("children",item);
 						SC.arrayRemove(oldParentRow.treeChildren,row);
 					}
 					if(parent)
 					{
-						parent.addChild("package",item);
+						parent.addChild("children",item);
 						parentRow.treeChildren.push(row);
 					}
 					else
@@ -205,7 +202,7 @@
 			{
 				µ.logger.info("downloadEvent sort:",event);
 				var data=JSON.parse(event.data);
-				var items=data.map(d=>this.findByClassID(d));
+				var items=data.map(d=>this.findByClassID(d.objectType,d.ID));
 				var parent=items[0].getParent("package");
 
 				for(let i=0;i<items.length;i++) items[i].orderIndex=i;
@@ -352,6 +349,24 @@
         	var selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.move(selected);
+        },
+        sort:function(package,items)
+        {
+        	return this.apiCall("sort",SC.prepareItems.toClassIDs(items),"PUT");
+        },
+        sortPackage:function(package)
+        {
+        	let items;
+        	if(package) items=package.getItems();
+        	else items=this.organizer.getFilter("roots").getSort("orderIndex");
+
+        	return DownloadTable.sortDialog(items)
+        	.then(items=>this.sort(package,items));
+        },
+        sortSelected:function()
+        {
+        	let selected=this.getSelected().find(i=> i instanceof SC.Download.Package);
+        	return this.sortPackage(selected);
         }
 	});
 
@@ -465,7 +480,7 @@
 			radioName:"moveTarget"
 		});
 		tree.expand(true,true);
-		return new SC.Promise(function(signal)
+		return new Promise(function(resolve,reject)
 		{
 			SC.dlg(function(container)
 			{
@@ -483,406 +498,101 @@
 					{
 						var target=tree.getSelected()[0];
 						if(target===root) target=null;
-						signal.resolve(target);
+						resolve(target);
 						this.close();
 					},
 					cancel:function()
 					{
 						this.close();
-						signal.reject("cancel");
+						reject("cancel");
 					}
 				}
 			});
 		});
 	};
-	SMOD("NIWA-Download.DownloadTable",DownloadTable);
-/*
-	var downloadTable=function (columns,options)
+	DownloadTable.sortDialog=function(items)
 	{
-		options=SC.adopt({
-			apiPath:"rest/downloads",
-			eventName:"downloads",
-			onTableRefresh:null, //function(table)
-			DBClasses:[] // download && package
-		},options);
-		options.DBClasses.unshift(SC.Download,SC.Download.Package);
-		options.DBClasses=options.DBClasses.reduce((d,c)=>(d[c.prototype.objectType]=c,d),{});
 
-		var container=document.createElement("div");
-		container.classList.add("downloadTable");
-		var tableConfig=new SC.TreeTableConfig(
-			(columns||Object.keys(baseColumns)).map(c=>(c in baseColumns)?baseColumns[c]:c),
-			{
-				control:true,
-				childrenGetter:function(p)
-				{
-					if(p instanceof SC.Download.Package) return p.getItems();
-					return null;
-				}
-			}
-		);
-		var table=null;
-		var ocon=new SC.OCON();
-		var rowMap=new Map();
-
-		var refreshTable=function()
+		let sortTable=new SC.Table(new SC.TableConfig(["name"],{noInput:true,control:true}));
+		sortTable.add(items);
+		return new Promise(function(resolve,reject)
 		{
-			return Promise.all(Object.keys(options.DBClasses).map(key=>ocon.load(options.DBClasses[key])))
-			.then(SC.flatten)
-			.then(data=>
+			SC.dlg(function(container)
 			{
-				SC.DBObj.connectObjects(data);
-				rowMap.clear();
-				var newTable=tableConfig.getTable(data.filter(d=>d.packageID==null).sort(SC.Download.sortByOrderIndex),null,function(row,item)
-				{
-					rowMap.set(item.objectType+item.ID,row);
-					rowMap.set(row,item);
-					row.dataset.state=item.state;
-					row.dataset.type=item.objectType;
-				});
-
-				if(table) table.remove();
-				table=newTable;
-				container.appendChild(table);
-
-				if(options.onTableRefresh)options.onTableRefresh(table);
-			});
-		};
-		var updateTable=function(items)
-		{
-			for(var item of items)
-			{
-				var row=rowMap.get(item.objectType+item.ID);
-				if(!row)
-				{
-					µ.logger.warn("row not found: "+item.objectType+item.ID);
-					debugger;
-				}
-				var cols=Array.slice(row.children,1);
-				//cols[0]=cols[0].children[2]
-				for(var i=0;i<cols.length;i++)
-				{
-					tableConfig.columns[i].fn.call(item,cols[i],item);
-				}
-				row.dataset.state=item.state;
-			}
-		};
-		var updateItems=function(itemDictionary)
-		{
-			var items=[];
-			for(var objectType in itemDictionary)
-			{
-				if(objectType in options.DBClasses)
-				{
-					var itemClass=options.DBClasses[objectType];
-					for(var item of itemDictionary[objectType])
-					{
-						items.push(new itemClass().fromJSON(item));
-					}
-				}
-				else µ.logger.error("unknown class: "+objectType);
-			}
-			return ocon.save(items).then(()=>items);
-		};
-
-		var es=new EventSource("event/"+options.eventName);
-		window.addEventListener("beforeunload",function(){es.close()})
-		es.addEventListener("error",function(error)
-		{
-			if(es.readyState==EventSource.CLOSED) alert("connection lost");
-			µ.logger.error(error);
-		});
-		es.addEventListener("ping",µ.logger.debug);
-
-		es.addEventListener("init",function(event)
-		{
-			µ.logger.info("downloadEvent init:",event);
-			ocon.db.clear();
-			ocon.db.add(JSON.parse(event.data));
-			refreshTable();
-		});
-		es.addEventListener("add",function(event)
-		{
-			µ.logger.info("downloadEvent add:",event);
-			ocon.db.add(JSON.parse(event.data));
-			refreshTable();
-		});
-		es.addEventListener("delete",function(event)
-		{
-			µ.logger.info("downloadEvent delete:",event);
-			var data=JSON.parse(event.data);
-			var promises=[];
-			for(var objectType in data)
-			{
-				if(objectType in options.DBClasses)
-				{
-					promises.push(ocon.delete(options.DBClasses[objectType],data[objectType]));
-				}
-			}
-			Promise.all(promises).then(refreshTable)
-		});
-		es.addEventListener("update",function(event)
-		{
-			µ.logger.info("downloadEvent update:",event);
-			updateItems(JSON.parse(event.data)).then(updateTable);
-		});
-		es.addEventListener("move",function(event)
-		{
-			µ.logger.info("downloadEvent move:",event);
-			updateItems(JSON.parse(event.data)).then(refreshTable);
-		});
-		es.addEventListener("sort",function(event)
-		{
-			µ.logger.info("downloadEvent sort:",event);
-			updateItems(JSON.parse(event.data)).then(refreshTable);
-		});
-
-		var prepareItems=function(items)
-		{
-			var rtn={};
-			for(var item of items)
-			{
-				if(!rtn[item.objectType])rtn[item.objectType]=[];
-				rtn[item.objectType].push(item.ID);
-			}
-			return rtn;
-		};
-
-		var api={
-			"getContainer":()=>container,
-			"getTable":()=>table,
-			"getDb":()=>ocon,
-			"autoTrigger":function(nextState)
-			{
-				return SC.rq({
-					url:options.apiPath+"/autoTrigger",
-					data:JSON.stringify(!!nextState),
-					methos:"POST"
-				});
-			},
-			"disable":function(items)
-			{
-				return SC.rq({
-					url:options.apiPath+"/disable",
-					data:JSON.stringify(prepareItems(items)),
-					method:"PUT"
-				});
-			},
-			"enable":function(items)
-			{
-				return SC.rq({
-					url:options.apiPath+"/enable",
-					data:JSON.stringify(prepareItems(items)),
-					method:"PUT"
-				});
-			},
-			"reset":function(items)
-			{
-				return SC.rq({
-					url:options.apiPath+"/reset",
-					data:JSON.stringify(prepareItems(items)),
-					method:"PUT"
-				});
-			},
-			"createPackage":function(name,items,packageClassName)
-			{
-				return SC.rq({
-					url:options.apiPath+"/createPackage",
-					data:JSON.stringify({
-						items:prepareItems(items),
-						name:name,
-						packageClass:packageClassName||"Package"
-					}),
-					method:"POST"
-				});
-			},
-			"moveTo":function(target,items)
-			{
-				var data={
-					target:null,
-					items:prepareItems(items),
-				};
-				if(target) data.target={
-					[target.objectType]:target.ID
-				}
-				return SC.rq({
-					url:options.apiPath+"/moveTo",
-					data:JSON.stringify(data),
-					method:"PUT"
-				});
-			},
-			"moveSelected":function()
-			{
-				var selected=table.getSelected();
-				if(selected.length==0) return Promise.resolve();
-				var packageClasses=Object.keys(options.DBClasses).map(key=>options.DBClasses[key]).filter(c=>c===SC.Download.Package||c.prototype instanceof SC.Download.Package);
-				return Promise.all(packageClasses.map(c=>ocon.load(c)))
-				.then(SC.flatten)
-				.then(function(packages)
-				{
-					SC.DBObj.connectObjects(packages);
-					return {
-						name:"root",
-						children:packages.filter(p=>p.packageID==null)
-					};
-				})
-				.then(function(root)
-				{
-					var tree=SC.stree(root,function(element,package)
-					{
-						element.textContent=package.name;
-						//TODO disable selected packages and its children
-					},{
-						childrenGetter:c=>c instanceof SC.Download.Package?c.getChildren("subPackages"):c.children,
-						radioName:"moveTarget"
-					});
-					tree.expand(true,true);
-					return new SC.Promise(function(signal)
-					{
-						SC.dlg(function(container)
-						{
-							container.appendChild(tree);
-							var okBtn=document.createElement("button");
-							okBtn.textContent=okBtn.dataset.action="OK";
-							container.appendChild(okBtn);
-							var closeBtn=document.createElement("button");
-							closeBtn.textContent=closeBtn.dataset.action="cancel";
-							container.appendChild(closeBtn);
-
-						},{
-							modal:true,
-							actions:{
-								OK:function()
-								{
-									var target=tree.getSelected()[0];
-									if(target===root) target=null;
-									api.moveTo(target,selected)
-									.then(signal.resolve,signal.reject);
-									this.close();
-								},
-								cancel:function()
-								{
-									this.close();
-									signal.reject("cancel");
-								}
-							}
-						});
-					});
-				});
-			},
-			"delete":function(items)
-			{
-				return SC.rq({
-					url:options.apiPath+"/delete",
-					data:JSON.stringify(prepareItems(items)),
-					method:"DELETE"
-				});
-			},
-			"sortSelected":function()
-			{
-				var selected=table.getSelected()[0];
-				if(!selected) return;
-				var loadPattern={packageID:selected.packageID||SC.eq.unset()};
-				if(selected instanceof SC.Download.Package) loadPattern={packageID:selected.ID};
-
-				var dbClasses=Object.keys(options.DBClasses).map(key=>options.DBClasses[key]);
-				return Promise.all(dbClasses.map(c=>ocon.load(c,loadPattern)))
-				.then(SC.flatten)
-				.then(function(downloads)
-				{
-					downloads.sort(SC.Download.sortByOrderIndex);
-					var sortConfig=new SC.TableConfig(["name"],{radioName:"sortItems",noInput:true});
-					var sortTable=sortConfig.getTable(downloads,function(row,data)
-					{
-						row.dataset.type=data.objectType;
-						row.dataset.ID=data.ID;
-					});
-					var nameHeader=sortTable.querySelector('header [data-translation="name"]');
-					nameHeader.dataset.action="sortName";
-					return new SC.Promise(function(signal)
-					{
-						SC.dlg(function(container)
-						{
-							container.classList.add("sortDialog");
-							container.innerHTML=String.raw
+				container.classList.add("sortDialog");
+				container.innerHTML=String.raw
 `
 <div class="sortWrapper">
-	<div class="sortActions">
-		<button data-action="first">⤒</button>
-		<button data-action="up">↑</button>
-		<button data-action="down">↓</button>
-		<button data-action="last">⤓</button>
-	</div>
-	<div class="sortTableScroll"></div>
+<div class="sortActions">
+	<button data-action="first">⤒</button>
+	<button data-action="up">↑</button>
+	<button data-action="down">↓</button>
+	<button data-action="last">⤓</button>
+</div>
+<div class="sortTableScroll"></div>
 </div>
 <div class="dialogActions">
-	<button data-action="ok">OK</button>
-	<button data-action="cancel">Cancel</button>
+<button data-action="ok">OK</button>
+<button data-action="cancel">Cancel</button>
 </div>
 `
-							;
-							container.firstElementChild.lastElementChild.appendChild(sortTable);
-						},{
-							modal:true,
-							actions:{
-								first:function()
-								{
-									var selectedRow=sortTable.getSelectedRows()[0];
-									if(selectedRow) selectedRow.parentNode.insertBefore(selectedRow,selectedRow.parentNode.firstChild);
-								},
-								up:function()
-								{
-									var selectedRow=sortTable.getSelectedRows()[0];
-									if(selectedRow) selectedRow.parentNode.insertBefore(selectedRow,selectedRow.previousElementSibling);
-								},
-								down:function()
-								{
-									var selectedRow=sortTable.getSelectedRows()[0];
-									if(selectedRow&&selectedRow.nextElementSibling) selectedRow.parentNode.insertBefore(selectedRow,selectedRow.nextElementSibling.nextElementSibling);
-								},
-								last:function()
-								{
-									var selectedRow=sortTable.getSelectedRows()[0];
-									if(selectedRow) selectedRow.parentNode.appendChild(selectedRow);
-								},
-								sortName:function()
-								{
-									var tableBody=Array.from(sortTable.children).filter(e=>e.tagName=="DIV")[0];
-									Array.from(tableBody.children)
-									.sort((a,b)=>a.children[1].textContent>b.children[1].textContent)
-									.forEach(r=>tableBody.appendChild(r));
-								},
-								ok:function()
-								{
-									var promise= SC.rq({
-										url:options.apiPath+"/sort",
-										data:JSON.stringify({
-											packageID:(selected instanceof SC.Download.Package)?selected.ID:null,
-											items:Array.from(sortTable.lastElementChild.children).map(e=>({objectType:e.dataset.type,ID:e.dataset.ID})),
-										}),
-										method:"POST"
-									}).then(signal.resolve,signal.reject);
-									promise.always(this.close);
-									return promise;
-								},
-								cancel:function()
-								{
-									this.close();
-									signal.reject("cancel");
-								}
-							}
-						});
-					});
-				});
-			},
-			getSelected:function()
-			{
-				if(!table) return [];
-				else return Array.map(table.querySelectorAll("label > *:checked:first-child"),e=>rowMap.get(e.parentNode));
-			}
-		};
-		return api;
-	};
-	*/
+				;
+				container.firstElementChild.lastElementChild.appendChild(sortTable.getTable());
+				var nameHeader=sortTable.tableHeader.querySelector('.name');
+				nameHeader.dataset.action="sortName";
+			},{
+				modal:true,
+				actions:{
+					first:function()
+					{
+						let selectedRows=Array.from(sortTable.tableBody.children).filter(row=>row.firstElementChild.checked);
+						let firstChild=sortTable.tableBody.firstElementChild;
+						selectedRows.forEach(r=>sortTable.tableBody.insertBefore(r,firstChild));
+					},
+					up:function()
+					{
+						let selectedRows=Array.from(sortTable.tableBody.children).filter(row=>row.firstElementChild.checked);
+						if(selectedRows.length>0)
+						{
+							let prevChild=selectedRows[0].previousElementSibling;
+							selectedRows.forEach(r=>sortTable.tableBody.insertBefore(r,prevChild));
+						}
+					},
+					down:function()
+					{
+						let selectedRows=Array.from(sortTable.tableBody.children).filter(row=>row.firstElementChild.checked);
+						if(selectedRows.length>0)
+						{
+							let nextChild=selectedRows[selectedRows.length-1].nextElementSibling;
+							if(nextChild) nextChild=nextChild.nextElementSibling;
+							selectedRows.forEach(r=>sortTable.tableBody.insertBefore(r,nextChild));
+						}
+					},
+					last:function()
+					{
+						let selectedRows=Array.from(sortTable.tableBody.children).filter(row=>row.firstElementChild.checked);
+						selectedRows.forEach(r=>sortTable.tableBody.appendChild(r));
+					},
+					sortName:function()
+					{
+						Array.from(sortTable.tableBody.children)
+						.sort((a,b)=>a.children[1].textContent>b.children[1].textContent)
+						.forEach(r=>sortTable.tableBody.appendChild(r));
+					},
+					ok:function()
+					{
+						this.close();
+						resolve(Array.from(sortTable.tableBody.children).map(r=>sortTable.change(r)));
+					},
+					cancel:function()
+					{
+						this.close();
+						reject("cancel");
+					}
+				}
+			});
+		});
+	}
+	SMOD("NIWA-Download.DownloadTable",DownloadTable);
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

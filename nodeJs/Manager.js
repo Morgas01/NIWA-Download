@@ -309,6 +309,25 @@
 				});
 			});
     	},
+    	sort:function(items)
+    	{
+    		if(!items||!(items.length>0)) return Promise.reject("no items");
+
+    		let sameParent=items.slice(1).find(i=>!(i.packageID==items[0].packageID))===undefined;
+    		if(!sameParent) return Promise.reject("not same parent");
+
+    		items.forEach((item,index)=>
+    		{
+    			item.orderIndex=index;
+    		});
+
+    		return this.dbConnector.then(dbc=>dbc.save(items))
+    		.then(()=>
+    		{
+    			this.notify("sort",SC.prepareItems.toClassIDs(items));
+    			return true;
+    		})
+    	},
     	changeState:function(idDictionary,expectedState,newState)
     	{
     		var isPending=(newState===SC.Download.states.PENDING)
@@ -678,9 +697,12 @@
 		},
 		sort:function(param)
 		{
-			return checkRequest(param,"POST")
+			return checkRequest(param,"PUT")
 			.then(data=>
 			{
+				if(!data||Object.keys(data).length==0) return Promise.reject("no items selected");
+				return this.loadClassIDs(data).then(items=>this.sort(items));
+				/*
 				var dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key]);
 				var loadPattern={packageID:data.packageID!=null?data.packageID:SC.eq.unset()};
 
@@ -713,7 +735,7 @@
 				{
 					return this.dbConnector.then(dbc=>dbc.save(sortedItem))
 					.then(()=>this.notify("sort",SC.prepareItems.toClassIDs(sortedItem)));
-				});
+				});*/
 			});
 		},
 		autoTrigger:function(param)
