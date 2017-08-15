@@ -38,77 +38,77 @@
 		{
 			actionResponse(downloadTable.autoTrigger(true));
 		},
-        autoTriggerOff:function()
-        {
+		autoTriggerOff:function()
+		{
 			actionResponse(downloadTable.autoTrigger(false));
-        },
-        add:function()
-        {
+		},
+		add:function()
+		{
 			var nr=downloadCounter++;
-        	actionResponse(downloadTable.add([
-        		new SC.Download({
+			actionResponse(downloadTable.add([
+				new SC.Download({
 					name:"download "+nr,
 					filename:"download_"+nr+".test",
 					filepath:"test/downloads",
 					filesize:1000**(nr%7)*1.5
 				})
 			]));
-        },
-        addWithPackage:function()
-        {
+		},
+		addWithPackage:function()
+		{
 			var nr=downloadCounter++;
 			var nr2=downloadCounter++;
-        	actionResponse(downloadTable.addWithPackage("testPackage",undefined,[
-        		new SC.Download({
+			actionResponse(downloadTable.addWithPackage("testPackage",undefined,[
+				new SC.Download({
 					name:"download "+nr,
 					filename:"download_"+nr+".test",
 					filepath:"test/downloads",
 					filesize:1000**(nr%7)*1.5
 				}),
-        		new SC.Download({
+				new SC.Download({
 					name:"download "+nr2,
 					filename:"download_"+nr2+".test",
 					filepath:"test/downloads",
 					filesize:1000**(nr2%7)*1.5
 				})
 			]));
-        },
-        package:function()
-        {
+		},
+		package:function()
+		{
 			//TODO
-        },
-        trigger:function()
-        {
-        	actionResponse(downloadTable.triggerSelected());
-        },
-        remove:function()
-        {
+		},
+		trigger:function()
+		{
+			actionResponse(downloadTable.triggerSelected());
+		},
+		remove:function()
+		{
 			actionResponse(downloadTable.removeSelected());
-        },
-        disable:function()
-        {
+		},
+		disable:function()
+		{
 			actionResponse(downloadTable.disableSelected());
-        },
-        reset:function()
-        {
+		},
+		reset:function()
+		{
 			actionResponse(downloadTable.resetSelected());
-        },
-        enable:function()
-        {
+		},
+		enable:function()
+		{
 			actionResponse(downloadTable.enableSelected());
-        },
-        move:function()
-        {
+		},
+		move:function()
+		{
 			actionResponse(downloadTable.moveSelected());
-        },
-        sort:function()
-        {
+		},
+		sort:function()
+		{
 			actionResponse(downloadTable.sortSelected());
-        },
-        abort:function()
-        {
+		},
+		abort:function()
+		{
 			actionResponse(downloadTable.abortSelected());
-        },
+		},
 	},document.getElementById("actions"));
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);
