@@ -107,7 +107,7 @@
 			if(!options.storagePath) this.dbConnector=Promise.resolve(new SC.ObjectConnector());
 			else
 			{
-				var storageFile=new SC.File(options.storagePath);
+				var storageFile= SC.File.stringToFile(options.storagePath);
 				this.dbConnector=SC.FileUtils.enshureDir(storageFile.clone().changePath("..")).then(()=>
 				{
 					var dbErrors=this.dbErrors;
