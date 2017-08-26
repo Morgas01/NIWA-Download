@@ -1,5 +1,7 @@
 (function(µ,SMOD,GMOD,HMOD,SC){
 
+	var Listeners=GMOD("Listeners");
+
 	SC=SC({
 		TreeTable:"gui.TreeTable",
 		Config:"gui.TreeTableConfig.Select",
@@ -34,9 +36,12 @@
 	 * base column name sets the data-state attribute of the row.
 	 * If you omit this column you have to set it manually.
 	 */
-	var DownloadTable=µ.Class({
+	var DownloadTable=µ.Class(Listeners,{
 		init:function(columns,options)
 		{
+			this.mega();
+			this.createListener(".speed .size .totalSize");
+
 			columns=(columns||Object.keys(DownloadTable.baseColumns)).map(c=>(c in DownloadTable.baseColumns)?DownloadTable.baseColumns[c]:c) //map strings to baseColumn function
 
 			this.options=SC.adopt({
@@ -53,8 +58,9 @@
 			this.element.classList.add("downloadTable");
 
 			this.organizer=new SC.Org();
-			this.organizer.filter("roots",obj=>obj.packageID==null,g=>g.sort("orderIndex",orderByIndex))
-			.group("class","objectType",sub=>sub.map("ID","ID"));
+			this.organizer.filter("roots",obj=>obj.packageID==null,f=>f.sort("orderIndex",orderByIndex))
+			.group("class","objectType",sub=>sub.map("ID","ID"))
+			.filter("statistics",obj=>obj instanceof SC.Download,f=>f.group("state","state"));
 
 			this.connect();
 		},
@@ -89,6 +95,8 @@
 
 				this.organizer.getFilter("roots").getSort("orderIndex")
 				.forEach(entry=>this.treeTable.add(entry));
+
+				this._updateSize();
 			},
 			"add":function(event)
 			{
@@ -105,6 +113,8 @@
 					}
 					this.treeTable.add(item,item.getParent("package"));
 				});
+
+				this._updateTotalSize();
 			},
 			"delete":function(event)
 			{
@@ -137,6 +147,11 @@
 					this.treeTable.update(child);
 				}
 				this.organizer.update(parents);
+
+				// update stateListener
+				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).getGroupValues;
+				this.setState(".speed",running.reduce((a,b)=>a+b.getSpeed(),0));
+				this._updateSize();
 			},
 			"move":function(event)
 			{
@@ -233,6 +248,35 @@
 					});
 				}
 			}
+		},
+		_updateSize:function()
+		{
+			let states=this.organizer.getFilter("statistics").getGroupValues("state");
+
+			let sizeEvent={
+				total:0,
+				states:{}
+			};
+			let totalSizeEvent={
+				total:0,
+				states:{}
+			};
+			for(let state of Object.values(SC.Download.states))
+			{
+				let size=0;
+				let totalSize=0;
+				if(state in states)
+				{
+					size=states[state].reduce((a,b)=>a+b.size,0);
+					totalSize=states[state].reduce((a,b)=>a+b.filesize,0);
+				}
+				sizeEvent.total+=size;
+				totalSizeEvent.total+=totalSize;
+				sizeEvent.states[state]=size;
+				totalSizeEvent.states[state]=totalSize;
+			}
+			this.setState(".size",sizeEvent);
+			this.setState(".totalSize",totalSizeEvent);
 		},
 		findByClassID:function(objectType,ID)
 		{
