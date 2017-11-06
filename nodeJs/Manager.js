@@ -18,21 +18,22 @@
     	flatten:"flatten",
     	itAs:"iterateAsync",
     	prepareItems:require.bind(null,"../lib/prepareItems"),
+    	ServiceResult:"ServiceResult",
     });
 
-    var delegateID=0;
-    var delegateMap=new Map();
+    let delegateID=0;
+    let delegateMap=new Map();
 
-    var delegateDownload=function(appName,download,onUpdate,manager)
+    let delegateDownload=function(appName,download,onUpdate,manager)
     {
-    	var delegateInfo={
+    	let delegateInfo={
     		appName:appName,
     		ID:delegateID++,
     		onUpdate:onUpdate,
     		manager:manager
     	};
     	delegateMap.set(delegateInfo.ID,delegateInfo);
-    	var p=worker.ask(appName,"receiveDownload",{
+    	let p=worker.ask(appName,"receiveDownload",{
     		ID:delegateInfo.ID,
     		download:download,
     		objectType:download.objectType
@@ -42,7 +43,7 @@
     }
     worker.updateDelegatedDownload=function(update,appName)
 	{
-		var delegateInfo=delegateMap.get(update.remoteID);
+		let delegateInfo=delegateMap.get(update.remoteID);
 
 		if(!delegateInfo) µ.logger.error("no delegate info");
 		else if(delegateInfo.appName!=appName) µ.logger.error("wrong delegate app");
@@ -57,7 +58,7 @@
 		}
 	}
 
-	var rotateErrorMapper=function(rotateError)
+	let rotateErrorMapper=function(rotateError)
 	{
 		return {error:SC.es(rotateError.error),file:rotateError.file.getAbsolutePath()}
 	};
@@ -66,8 +67,8 @@
 	 * This class provides some basic methods to handle downloads.
 	 * It provites a Rest api unter .serviceMethods {@link SERVICEMETHODS} which the downloadTable.js accesses.
 	 */
-	var MANAGER=module.exports=µ.Class({
-		init:function(options)
+	let MANAGER=module.exports=µ.Class({
+		constructor:function(options)
 		{
 			SC.rescope.all(this,["isDownloadNotRunning","receiveDownload","_trigger","fetchSubPackages"]);
 			options=SC.adopt({
@@ -93,7 +94,7 @@
 
 			this.runningDownloadMap=new Map();
 			this.serviceMethods={};
-			for (var key in SERVICEMETHODS)
+			for (let key in SERVICEMETHODS)
 			{
 				this.serviceMethods[key]=SC.rescope(SERVICEMETHODS[key],this);
 			}
@@ -107,10 +108,10 @@
 			if(!options.storagePath) this.dbConnector=Promise.resolve(new SC.ObjectConnector());
 			else
 			{
-				var storageFile= SC.File.stringToFile(options.storagePath);
+				let storageFile= SC.File.stringToFile(options.storagePath);
 				this.dbConnector=SC.FileUtils.enshureDir(storageFile.clone().changePath("..")).then(()=>
 				{
-					var dbErrors=this.dbErrors;
+					let dbErrors=this.dbErrors;
 					return new SC.JsonConnector(storageFile,options.jsonConnectorParam).open
 					.then(function(result)
 					{
@@ -146,8 +147,8 @@
 			this.notify=worker.eventSource(this.eventName,()=>
 				this.dbConnector.then(dbc=>
 				{
-					var dict=dbc.db.getGroupValues("objectType");
-					for (var type in dict)
+					let dict=dbc.db.getGroupValues("objectType");
+					for (let type in dict)
 					{
 						dict[type]=dict[type].map(o=>o.fields);
 					}
@@ -230,14 +231,14 @@
     	},
     	createPackage:function(packageClass,packageName,items,parent)
     	{
-    		var package=new packageClass();
+    		let package=new packageClass();
     		package.name=packageName;
 
     		if(parent) parent.addChild("subPackages",package);
 
     		return this.dbConnector.then(dbc=>
     		{
-    			var p=dbc.save(package)
+    			let p=dbc.save(package)
 				.then(()=>
 				{
 					this.notify("add",SC.prepareItems.toDictionary([package],false));
@@ -246,7 +247,7 @@
 				{
 					p=p.then(()=>
 					{
-						var wasPersisted=new Map()
+						let wasPersisted=new Map()
 						items.forEach((d,i)=>
 						{
 							d.orderIndex=i;
@@ -255,7 +256,7 @@
 						});
 						return dbc.save(items).then(()=>
 						{
-							var hasNewItems=false;
+							let hasNewItems=false;
 							items.forEach(d=>
 							{
 								if(wasPersisted.get(d)) this.notify("move",{
@@ -280,8 +281,8 @@
     		return this.fetchParentPackages(package) //get parents until "root"
     		.then(()=> //generate parentUIDs
     		{
-    			var parentUIDs=[];
-    			var parent=package;
+    			let parentUIDs=[];
+    			let parent=package;
     			while(parent!=null)
     			{
     				parentUIDs.push(parent.objectType+","+parent.ID);
@@ -292,7 +293,7 @@
     		.then(parentUIDs=>items.filter(i=>parentUIDs.indexOf(i.objectType+","+i.ID)==-1)) // filter items that are parents of package
     		.then(items=>
     		{
-				for(var item of items)
+				for(let item of items)
 				{
 					item.setParent("package",package||null);
 					if(!keepOrder) item.orderIndex=null;
@@ -330,7 +331,7 @@
     	},
     	changeState:function(idDictionary,expectedState,newState)
     	{
-    		var isPending=(newState===SC.Download.states.PENDING)
+    		let isPending=(newState===SC.Download.states.PENDING)
     		return this.dbConnector.then(dbc=>
     			Promise.all(Object.keys(idDictionary)
     				.map(type=>dbc.load(this.DBClassDictionary[type],{ID:idDictionary[type],state:expectedState}))
@@ -338,7 +339,7 @@
 				.then(SC.flatten)
 				.then(downloads=>
 				{
-					for(var download of downloads)
+					for(let download of downloads)
 				 	{
 				 		download.state=newState;
 				 		if(isPending)download.clearMessages();
@@ -355,12 +356,12 @@
     	{
     		return this.dbConnector.then(dbc=>
     		{
-				var filteredItems=Object.keys(patternDictionary)
+				let filteredItems=Object.keys(patternDictionary)
 				.map(type=>
 				{
 					// load items
-					var dbClass=this.DBClassDictionary[type];
-					var loading=dbc.load(dbClass,patternDictionary[type]);
+					let dbClass=this.DBClassDictionary[type];
+					let loading=dbc.load(dbClass,patternDictionary[type]);
 
 					if(dbClass.prototype instanceof SC.Download||dbClass==SC.Download) //filter downloads
 						loading=loading.then(downloads=>downloads.filter(this.isDownloadNotRunning));
@@ -369,11 +370,11 @@
 						loading=loading.then(packages=>this.fetchSubPackages(packages)
 						.then(()=>packages.map(p=>
 						{
-							var toDelete=new Set();
+							let toDelete=new Set();
 							SC.NodePatch.traverse(p,package=>
 							{
-								var isRunning=false;
-								for(var download of package.getChildren("children"))
+								let isRunning=false;
+								for(let download of package.getChildren("children"))
 								{
 									if(!this.isDownloadNotRunning(download)) isRunning=true;
 									else toDelete.add(download);
@@ -381,7 +382,7 @@
 								if(!isRunning) toDelete.add(package);
 								else
 								{
-									var parent=package;
+									let parent=package;
 									while(parent=parent.getParent("package")) toDelete.delete(parent);
 								}
 							},parent=>parent.getChildren("subPackages"));
@@ -396,7 +397,7 @@
 				.then(items=>SC.prepareItems.toDictionary(items,true))
 				.then(dict=>
 				{
-					var deletions=Object.keys(dict)
+					let deletions=Object.keys(dict)
 					.map(type=>dbc.delete(this.DBClassDictionary[type],dict[type])
 						.then(result=>[type,result])
 					);
@@ -404,8 +405,8 @@
 				})
 				.then(results=>
 				{
-					var rtn={};
-					for(var result of results)
+					let rtn={};
+					for(let result of results)
 					{
 						rtn[result[0]]=result[1];
 					}
@@ -435,7 +436,7 @@
     	{
     		if(!download.startTime) download.startTime=Date.now();
     		download.time=Date.now();
-    		var data=download.toUpdateJSON();
+    		let data=download.toUpdateJSON();
     		this.notify("update",{[download.objectType]:[data]});
     		if (download.appName)
     		{
@@ -446,7 +447,7 @@
     	isDownloadReady:µ.constantFunctions.t,
     	isDownloadNotRunning:function(download)
     	{
-    		for(var running of this.runningDownloadMap.keys())
+    		for(let running of this.runningDownloadMap.keys())
     		{
     			if(running.objectType===download.objectType &&
     				running.ID===download.ID &&
@@ -465,7 +466,7 @@
     		{
 				download.state=SC.Download.states.RUNNING;
 				this.updateDownload(download);
-				var runningInfo={promise:null};
+				let runningInfo={promise:null};
 				this.runningDownloadMap.set(download,runningInfo);
 				runningInfo.promise=new SC.Promise(this.download,{args:[download],scope:this});
 				runningInfo.promise.then(function()
@@ -488,7 +489,7 @@
 					this.runningDownloadMap.delete(download);
 					this.dbConnector.then(dbc=>
 					{
-						var p;
+						let p;
 						if(download.appName)
 						{
 							p=dbc.delete(this.DBClassDictionary[download.objectType],[download]).catch(e=>µ.logger.error({error:e},"failed to delete completed delegate download"));
@@ -509,9 +510,9 @@
 			data.download.appName=appName;
 			delete data.download.ID;
 			delete data.download.packageID;
-			var downloadClass=this.DBClassDictionary[data.objectType];
+			let downloadClass=this.DBClassDictionary[data.objectType];
 			if(!downloadClass) return Promise.reject("unknown class: "+data.download.objectType);
-			var download=new downloadClass();
+			let download=new downloadClass();
 			download.fromJSON(data.download);
 
 			return trueOrReject(this.accept(download,appName))
@@ -528,24 +529,23 @@
     		if(!this.autoTriggger) return Promise.resolve();
     		if(this.maxDownloads!=0&&this.runningDownloadMap.size>=this.maxDownloads) return Promise.resolve();
     		//TODO queue?
-    		var dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key])
-    		var triggerPromise=this.dbConnector.then(dbc=>
+    		let dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key])
+    		let triggerPromise=this.dbConnector.then(async dbc=>
     		{
-    			//load all dbClasses in Pending
-    			return Promise.all(dbClasses.map(dbClass=>dbc.load(dbClass,{packageID:SC.eq.unset()})))
-				.then(SC.flatten) //flatten
-				.then(data=>
+    			//load all dbClasses on root
+    			let data=SC.flatten(await Promise.all(dbClasses.map(dbClass=>dbc.load(dbClass,{packageID:SC.eq.unset()}))))
+				let sortedData=data.sort(SC.Download.sortByOrderIndex);
+				try
 				{
-					var sortedData=data.sort(SC.Download.sortByOrderIndex);
-					return SC.itAs(sortedData,function(index,item)
+					let results = await SC.Promise.chain(sortedData,(item,index)=>
 					{
 						if(item instanceof SC.Download)
 						{
-							if(item.state===SC.Download.states.PENDING&&this.isDownloadNotRunning(item))
-							{
-								return SC.Promise.reverse(this.startDownload(item),item);
-							}
-							return "download not pending";
+							if(item.state!==SC.Download.states.PENDING) return "download not pending";
+							if(!this.isDownloadNotRunning(item)) return "download is running";
+
+							return SC.Promise.reverse(this.startDownload(item),item);
+
 						}
 						else
 						{
@@ -554,7 +554,7 @@
 								dbc.loadChildren(item,"subPackages")
 							]).then(function()
 							{
-								sortedData.splice(index+1,0,...item.getItems()); //insert sub items as next items
+								sortedData.push(index+1,0,...item.getItems()); //insert sub items as next items
 								return "loaded sub items";
 							},
 							function(error)
@@ -563,29 +563,33 @@
 								return error;
 							});
 						}
-					},null,this).reverse("triggered download");
-				});
+					});
+					µ.logger.info({results:results},"could not trigger download");
+				}
+				catch(e)
+				{
+					if(e instanceof SC.Download) µ.logger.info("triggered download");
+					else µ.logger.error(e);
+				}
     		});
     		triggerPromise.then(this._trigger,µ.logger.error);
     		return triggerPromise;
     	}
 	});
 
-    var checkRequest=function(param,expectedMethod)
+    let checkRequest=function(param,expectedMethod)
     {
     	if(param.method!==expectedMethod)
     	{
-    		param.status=405;
-    		return Promise.reject(`only "${expectedMethod}" allowed`);
+    		return Promise.reject(new SC.ServiceResult({data:`only "${expectedMethod}" allowed`,status:405}));
     	}
     	if (!param.data)
     	{
-    		param.status=400;
-    		return Promise.reject("no data was send");
+    		return Promise.reject(new SC.ServiceResult({data:"no data was send",status:400}));
     	}
     	return Promise.resolve(param.data);
     };
-	var trueOrReject=function(value)
+	let trueOrReject=function(value)
 	{
 		if (SC.Promise.isThenable(value))
 		{
@@ -600,7 +604,7 @@
 	}
 
     // [this] is a Manager instance
-	var SERVICEMETHODS={
+	let SERVICEMETHODS={
 		errors:function()
 		{
 			return this.dbErrors;
@@ -610,7 +614,7 @@
 			return checkRequest(param,"POST")
 			.then(data=>
 			{
-				var downloads=SC.prepareItems.fromDictionary(data,this.DBClassDictionary);
+				let downloads=SC.prepareItems.fromDictionary(data,this.DBClassDictionary);
 				return this.add(downloads);
 			});
 		},
@@ -619,9 +623,9 @@
 			return checkRequest(param,"POST")
 			.then(data=>
 			{
-				var packageClass=this.DBClassDictionary[data.packageClass||"Package"];
+				let packageClass=this.DBClassDictionary[data.packageClass||"Package"];
 				if(!packageClass) throw "unknown package class: "+data.packageClass;
-				var downloads=SC.prepareItems.fromDictionary(data.downloads,this.DBClassDictionary);
+				let downloads=SC.prepareItems.fromDictionary(data.downloads,this.DBClassDictionary);
 
 				return this.addWithPackage(packageClass,data.packageName,downloads);
 			});
@@ -631,8 +635,8 @@
 			return checkRequest(param,"DELETE")
 			.then(data=>
 			{
-				var patterns={};
-				for(var type in data) patterns[type]={ID:data[type]};
+				let patterns={};
+				for(let type in data) patterns[type]={ID:data[type]};
 				return this.delete(patterns);
 			});
 		},
@@ -665,13 +669,13 @@
 			return checkRequest(param,"POST")
 			.then(data=>
 			{
-				var packageClass=this.DBClassDictionary[data.packageClass||"Package"];
+				let packageClass=this.DBClassDictionary[data.packageClass||"Package"];
 				if(!packageClass) throw "unknown package class: "+data.packageClass;
 
 				return this.loadDictionary(data.items)
 				.then(items=>
 				{
-					var p;
+					let p;
 					if(items.length==0) p=Promise.resolve();
 					else p=this.dbConnector.then(dbc=>dbc.loadParent(items[0],"package"));
 					return p.then(package=>this.createPackage(packageClass,data.name,items,package));
@@ -703,19 +707,19 @@
 				if(!data||Object.keys(data).length==0) return Promise.reject("no items selected");
 				return this.loadClassIDs(data).then(items=>this.sort(items));
 				/*
-				var dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key]);
-				var loadPattern={packageID:data.packageID!=null?data.packageID:SC.eq.unset()};
+				let dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key]);
+				let loadPattern={packageID:data.packageID!=null?data.packageID:SC.eq.unset()};
 
 				return this.dbConnector.then(dbc=>Promise.all(dbClasses.map(c=>dbc.load(c,loadPattern))))
 				.then(downloads=>Array.prototype.concat.apply(Array.prototype,downloads))//flatten
 				.then(function(items)
 				{
 					items.sort(SC.Download.sortByOrderIndex);
-					var sortingItems=items.slice();
-					var index=0;
-					for (var sortItem of data.items)
+					let sortingItems=items.slice();
+					let index=0;
+					for (let sortItem of data.items)
 					{
-						for(var i=0;i<sortingItems.length;i++)
+						for(let i=0;i<sortingItems.length;i++)
 						{
 							if(sortingItems[i].ID==sortItem.ID&&sortingItems[i].objectType===sortItem.objectType)
 							{
@@ -725,7 +729,7 @@
 							}
 						}
 					}
-					for(var unsortedItem of sortingItems)
+					for(let unsortedItem of sortingItems)
 					{
 						unsortedItem.orderIndex=index++;
 					}
@@ -748,8 +752,7 @@
 			}
 			else
 			{
-				param.status=405;
-				return Promise.reject("only POST or GET method is allowed");
+				return Promise.reject(new SC.ServiceResult({data:"only POST or GET method is allowed",status:405}));
 			}
 		}
 	};

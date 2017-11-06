@@ -1,7 +1,7 @@
 (function(){
-	var path=require("path");
+	let path=require("path");
 
-	var niwaDownloads=module.exports={
+	let niwaDownloads=module.exports={
 		dir:__dirname,
 		moduleRegister:require("./ModuleRegister"),
 		moduleDependencies:require("./ModuleDependencies"),

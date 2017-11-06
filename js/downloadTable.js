@@ -1,6 +1,6 @@
 (function(µ,SMOD,GMOD,HMOD,SC){
 
-	var Listeners=GMOD("Listeners");
+	let StateEvent=GMOD("StateEvent");
 
 	SC=SC({
 		TreeTable:"gui.TreeTable",
@@ -13,16 +13,17 @@
 		arrayRemove:"array.remove",
 		rq:"request",
 		adopt:"adopt",
-		dlg:"gui.dialog",
+		dlg:"gui.Dialog",
 		stree:"gui.selectionTree",
 		TableConfig:"gui.TableConfig.Select",
-		Table:"gui.Table"
+		Table:"gui.Table",
+		ReporterPatch:"EventReporterPatch"
 	});
 
-	var orderByIndex=(a,b)=>
+	let orderByIndex=(a,b)=>
 	{
-		var ai=a.orderIndex;
-		var bi=b.orderIndex;
+		let ai=a.orderIndex;
+		let bi=b.orderIndex;
 		if(ai==null)
 		{
 			if(bi==null) return 0;
@@ -36,11 +37,10 @@
 	 * base column name sets the data-state attribute of the row.
 	 * If you omit this column you have to set it manually.
 	 */
-	var DownloadTable=µ.Class(Listeners,{
-		init:function(columns,options)
+	let DownloadTable=µ.Class({
+		constructor:function(columns,options)
 		{
-			this.mega();
-			this.createListener(".speed .size .totalSize");
+			new SC.ReporterPatch(this,[DownloadTable.SpeedStateEvent,DownloadTable.SizeStateEvent,DownloadTable.TotalSizeStateEvent]);
 
 			columns=(columns||Object.keys(DownloadTable.baseColumns)).map(c=>(c in DownloadTable.baseColumns)?DownloadTable.baseColumns[c]:c) //map strings to baseColumn function
 
@@ -69,7 +69,7 @@
 			this.eventSource=new EventSource("event/"+this.options.eventName);
 			window.addEventListener("beforeunload",()=>this.eventSource.close());
 
-			for(var [name,fn] of Object.entries(this.eventHandles))
+			for(let [name,fn] of Object.entries(this.eventHandles))
 			{
 				this.eventSource.addEventListener(name,SC.rs(fn,this));
 			}
@@ -88,8 +88,8 @@
 				this.organizer.clear();
 
 				µ.logger.info("downloadEvent init:",event);
-				var data=JSON.parse(event.data);
-				var items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
+				let data=JSON.parse(event.data);
+				let items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
 				SC.DBObj.connectObjects(items);
 				this.organizer.add(items);
 
@@ -101,14 +101,14 @@
 			"add":function(event)
 			{
 				µ.logger.info("downloadEvent add:",event);
-				var data=JSON.parse(event.data);
-				var items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
+				let data=JSON.parse(event.data);
+				let items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
 				this.organizer.add(items);
 				items.forEach(item=>
 				{
 					if(item.packageID!=null)
 					{
-						var parent=this.findByClassID(item.relations["package"].relatedClass.prototype.objectType,item.packageID);
+						let parent=this.findByClassID(item.relations["package"].relatedClass.prototype.objectType,item.packageID);
 						parent.connectObjects([item]);
 					}
 					this.treeTable.add(item,item.getParent("package"));
@@ -119,30 +119,30 @@
 			"delete":function(event)
 			{
 				µ.logger.info("downloadEvent delete:",event);
-				var data=JSON.parse(event.data);
-				var items=[];
-				for(var type in data) for(let ID of data[type]) items.push(this.findByClassID(type,ID));
+				let data=JSON.parse(event.data);
+				let items=[];
+				for(let type in data) for(let ID of data[type]) items.push(this.findByClassID(type,ID));
 				this.organizer.remove(items);
 				items.forEach(i=>this.treeTable.remove(i));
 			},
 			"update":function(event)
 			{
 				µ.logger.info("downloadEvent update:",event);
-				var data=JSON.parse(event.data);
-				var items=[];
-				for(var type in data)
+				let data=JSON.parse(event.data);
+				let items=[];
+				for(let type in data)
 				{
-					for(var entry of data[type])
+					for(let entry of data[type])
 					{
-						var item=this.findByClassID(type,entry.ID);
+						let item=this.findByClassID(type,entry.ID);
 						item.fromJSON(entry);
 						items.push(item);
 					}
 				}
-				var parents=new Set(items);
-				for(var child of parents)
+				let parents=new Set(items);
+				for(let child of parents)
 				{
-					var parent=child.getParent("package")
+					let parent=child.getParent("package")
 					if(parent) parents.add(parent);
 					this.treeTable.update(child);
 				}
@@ -150,28 +150,28 @@
 
 				// update stateListener
 				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).getGroupValues;
-				this.setState(".speed",running.reduce((a,b)=>a+b.getSpeed(),0));
+				this.report(new DownloadTable.SpeedStateEvent(running.reduce((a,b)=>a+b.getSpeed(),0)));
 				this._updateSize();
 			},
 			"move":function(event)
 			{
 				µ.logger.info("downloadEvent move:",event);
-				var data=JSON.parse(event.data);
-				var items=data.items.map(d=>this.findByClassID(d.objectType,d.ID));
-				var parent=null;
-				var parentRow=null;
+				let data=JSON.parse(event.data);
+				let items=data.items.map(d=>this.findByClassID(d.objectType,d.ID));
+				let parent=null;
+				let parentRow=null;
 				if(data.parent)
 				{
 					parent=this.findByClassID(data.parent.objectType,data.parent.ID);
 					parentRow=this.treeTable.change(parent);
 				}
 
-				var rows=items.map(item=>
+				let rows=items.map(item=>
 				{
-					var row=this.treeTable.change(item);
+					let row=this.treeTable.change(item);
 					row.remove();
-					var oldParent=item.getParent("package");
-					var oldParentRow=this.treeTable.change(oldParent);
+					let oldParent=item.getParent("package");
+					let oldParentRow=this.treeTable.change(oldParent);
 					if(oldParent)
 					{
 						oldParent.removeChild("children",item);
@@ -216,17 +216,17 @@
 			"sort":function(event)
 			{
 				µ.logger.info("downloadEvent sort:",event);
-				var data=JSON.parse(event.data);
-				var items=data.map(d=>this.findByClassID(d.objectType,d.ID));
-				var parent=items[0].getParent("package");
+				let data=JSON.parse(event.data);
+				let items=data.map(d=>this.findByClassID(d.objectType,d.ID));
+				let parent=items[0].getParent("package");
 
 				for(let i=0;i<items.length;i++) items[i].orderIndex=i;
 				this.organizer.update(items);
 
 				if(parent)
 				{
-					var parentRow=this.treeTable.change(parent);
-					var wasExpanded=parentRow.isExpanded();
+					let parentRow=this.treeTable.change(parent);
+					let wasExpanded=parentRow.isExpanded();
 					parentRow.expand(false);
 					parentRow.treeChildren=items.map(i=>this.treeTable.change(i));
 					if(wasExpanded)
@@ -238,7 +238,7 @@
 				{
 					items.forEach(item=>
 					{
-						var row=this.treeTable.change(item);
+						let row=this.treeTable.change(item);
 						this.treeTable.tableBody.appendChild(row);
 						if(row.isExpanded())
 						{
@@ -275,8 +275,8 @@
 				sizeEvent.states[state]=size;
 				totalSizeEvent.states[state]=totalSize;
 			}
-			this.setState(".size",sizeEvent);
-			this.setState(".totalSize",totalSizeEvent);
+			this.report(new DownloadTable.SizeStateEvent(sizeEvent));
+			this.report(new DownloadTable.TotalSizeStateEvent(totalSizeEvent));
 		},
 		findByClassID:function(objectType,ID)
 		{
@@ -322,7 +322,7 @@
 		},
 		triggerSelected:function()
 		{
-			var selected=this.getSelected();
+			let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.trigger(selected);
 		},
@@ -332,7 +332,7 @@
 		},
 		removeSelected:function()
 		{
-			var selected=this.getSelected();
+			let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.remove(selected);
 		},
@@ -342,7 +342,7 @@
 		},
 		disableSelected:function()
 		{
-			var selected=this.getSelected();
+			let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.disable(selected);
 		},
@@ -352,7 +352,7 @@
         },
         resetSelected:function()
         {
-        	var selected=this.getSelected();
+        	let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.reset(selected);
         },
@@ -362,7 +362,7 @@
         },
         enableSelected:function()
         {
-        	var selected=this.getSelected();
+        	let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.enable(selected);
         },
@@ -372,7 +372,7 @@
         },
         abortSelected:function()
         {
-        	var selected=this.getSelected();
+        	let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.abort(selected);
         },
@@ -390,7 +390,7 @@
         },
         moveSelected:function()
         {
-        	var selected=this.getSelected();
+        	let selected=this.getSelected();
 			if(selected.length==0) return Promise.resolve();
 			return this.move(selected);
         },
@@ -414,8 +414,8 @@
         }
 	});
 
-	var dateHelper=new Date();
-	var getTimeString=function(time)
+	let dateHelper=new Date();
+	let getTimeString=function(time)
 	{
 		dateHelper.setTime(time||0)
 		return ("0"+dateHelper.getUTCHours()).slice(-2)+":"+("0"+dateHelper.getUTCMinutes()).slice(-2)+":"+("0"+dateHelper.getUTCSeconds()).slice(-2);
@@ -434,7 +434,7 @@
 		{
 			if(data.filepath)
 			{
-				var sep=(data.filepath.match(/[\\\/]/)||"/")[0];
+				let sep=(data.filepath.match(/[\\\/]/)||"/")[0];
 				cell.textContent=data.filepath+sep+data.filename;
 			}
 			else cell.textContent=data.filename||"";
@@ -464,7 +464,7 @@
 </div>`
 				;
 			}
-			var percentage=data.size/data.filesize*100;
+			let percentage=data.size/data.filesize*100;
 			cell.firstElementChild.firstElementChild.style.width=percentage+"%";
 			cell.dataset.title=percentage.toFixed(2)+"%";
 
@@ -486,8 +486,8 @@
 			{
 				if (cell.dataset.size&&cell.dataset.time)
 				{
-					var remaining=data.filesize-data.size;
-					var title=getTimeString(remaining/data.getCurrentSpeed(cell.dataset.size,cell.dataset.time)*1000)+"\n";
+					let remaining=data.filesize-data.size;
+					let title=getTimeString(remaining/data.getCurrentSpeed(cell.dataset.size,cell.dataset.time)*1000)+"\n";
 					title+=getTimeString(remaining/data.getSpeed()*1000);
 
 					cell.dataset.title=title;
@@ -502,7 +502,7 @@
 			}
 			else if(data.getSpeed()>0)
 			{
-				var remaining=data.filesize-data.size
+				let remaining=data.filesize-data.size
 				cell.textContent=getTimeString(remaining/data.getSpeed()*1000);
 			}
 		}
@@ -511,11 +511,11 @@
 	{
 		if(items.length==0) return Promise.resolve();
 		roots=roots.filter(r=>r instanceof SC.Download.Package);
-		var root={
+		let root={
 			name:"root",
 			getChildren:()=>roots
 		};
-		var tree=SC.stree(root,function(element,package)
+		let tree=SC.stree(root,function(element,package)
 		{
 			element.textContent=package.name;
 			//TODO disable selected packages and its children
@@ -526,13 +526,13 @@
 		tree.expand(true,true);
 		return new Promise(function(resolve,reject)
 		{
-			SC.dlg(function(container)
+			new SC.dlg(function(container)
 			{
 				container.appendChild(tree);
-				var okBtn=document.createElement("button");
+				let okBtn=document.createElement("button");
 				okBtn.textContent=okBtn.dataset.action="OK";
 				container.appendChild(okBtn);
-				var closeBtn=document.createElement("button");
+				let closeBtn=document.createElement("button");
 				closeBtn.textContent=closeBtn.dataset.action="cancel";
 				container.appendChild(closeBtn);
 			},{
@@ -540,7 +540,7 @@
 				actions:{
 					OK:function()
 					{
-						var target=tree.getSelected()[0];
+						let target=tree.getSelected()[0];
 						if(target===root) target=null;
 						resolve(target);
 						this.close();
@@ -561,7 +561,7 @@
 		sortTable.add(items);
 		return new Promise(function(resolve,reject)
 		{
-			SC.dlg(function(container)
+			new SC.dlg(function(container)
 			{
 				container.classList.add("sortDialog");
 				container.innerHTML=String.raw
@@ -582,7 +582,7 @@
 `
 				;
 				container.firstElementChild.lastElementChild.appendChild(sortTable.getTable());
-				var nameHeader=sortTable.tableHeader.querySelector('.name');
+				let nameHeader=sortTable.tableHeader.querySelector('.name');
 				nameHeader.dataset.action="sortName";
 			},{
 				modal:true,
@@ -636,7 +636,11 @@
 				}
 			});
 		});
-	}
+	};
+
+	DownloadTable.SpeedStateEvent=StateEvent.implement("downloadSpeed");
+	DownloadTable.SizeStateEvent=StateEvent.implement("downloadSize");
+	DownloadTable.TotalSizeStateEvent=StateEvent.implement("downloadTotalSize");
 	SMOD("NIWA-Download.DownloadTable",DownloadTable);
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

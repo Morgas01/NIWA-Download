@@ -1,13 +1,13 @@
 require("Morgas");
 
-var SC=µ.shortcut({
+let SC=µ.shortcut({
 	File:"File",
 	util:"File.util",
 	Promise:"Promise",
 	itAs:"iterateAsync"
 });
 
-var root				= new SC.File(__dirname);
+let root = new SC.File(__dirname);
 
 /*** dependencies ***/
 
