@@ -11,12 +11,10 @@
     	es:"errorSerializer",
     	Promise:"Promise",
     	NodePatch:"NodePatch",
-    	it:"iterate",
     	eq:"equals",
     	flatten:"flatten",
     	rescope:"rescope",
     	flatten:"flatten",
-    	itAs:"iterateAsync",
     	prepareItems:require.bind(null,"../lib/prepareItems"),
     	ServiceResult:"ServiceResult",
     });
@@ -185,9 +183,9 @@
 		{
 			return this.dbConnector.then(dbc=>
 				Promise.all(
-					SC.it(dict,(type,ids)=>
+					Object.entries(dict).map(([type,ids])=>
 						dbc.load(this.DBClassDictionary[type],{ID:ids})
-					,true)
+					)
 				)
 			)
 			.then(SC.flatten);
@@ -196,7 +194,7 @@
 		{
 			return this.dbConnector.then(dbc=>
 				Promise.all(
-					SC.it(classIDs,(i,classID)=>
+					classIDs.map(classID=>
 						dbc.load(this.DBClassDictionary[classID.objectType],{ID:classID.ID})
 					)
 				)

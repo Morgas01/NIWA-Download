@@ -2,7 +2,7 @@
 
 	SC=SC({
 		rq:"request",
-		dlg:"gui.dialog",
+		dlg:"gui.Dialog",
 		TableConfig:"gui.TableConfig",
 		Promise:"Promise"
 	});
@@ -40,7 +40,7 @@
 
 		return cache.catch(SC.Promise.pledge(function(signal,errors)
 		{
-			SC.dlg(function(element)
+			new SC.dlg(function(element)
 			{
 				element.innerHTML=String.raw
 `
