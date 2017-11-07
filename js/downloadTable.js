@@ -87,11 +87,11 @@
 				this.treeTable.clear();
 				this.organizer.clear();
 
-				µ.logger.info("downloadEvent init:",event);
+				µ.logger.debug("downloadEvent init:",event);
 				let data=JSON.parse(event.data);
 				let items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
 				SC.DBObj.connectObjects(items);
-				this.organizer.add(items);
+				this.organizer.addAll(items);
 
 				this.organizer.getFilter("roots").getSort("orderIndex")
 				.forEach(entry=>this.treeTable.add(entry));
@@ -100,7 +100,7 @@
 			},
 			"add":function(event)
 			{
-				µ.logger.info("downloadEvent add:",event);
+				µ.logger.debug("downloadEvent add:",event);
 				let data=JSON.parse(event.data);
 				let items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
 				this.organizer.add(items);
@@ -118,7 +118,7 @@
 			},
 			"delete":function(event)
 			{
-				µ.logger.info("downloadEvent delete:",event);
+				µ.logger.debug("downloadEvent delete:",event);
 				let data=JSON.parse(event.data);
 				let items=[];
 				for(let type in data) for(let ID of data[type]) items.push(this.findByClassID(type,ID));
@@ -127,7 +127,7 @@
 			},
 			"update":function(event)
 			{
-				µ.logger.info("downloadEvent update:",event);
+				µ.logger.debug("downloadEvent update:",event);
 				let data=JSON.parse(event.data);
 				let items=[];
 				for(let type in data)
@@ -135,6 +135,11 @@
 					for(let entry of data[type])
 					{
 						let item=this.findByClassID(type,entry.ID);
+						if(!item)
+						{
+							µ.logger.error(`could not find item ${type} with id ${entry.ID}`);
+							continue;
+						}
 						item.fromJSON(entry);
 						items.push(item);
 					}
@@ -149,13 +154,13 @@
 				this.organizer.update(parents);
 
 				// update stateListener
-				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).getGroupValues;
-				this.report(new DownloadTable.SpeedStateEvent(running.reduce((a,b)=>a+b.getSpeed(),0)));
+				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).values;
+				this.reportEvent(new DownloadTable.SpeedStateEvent(running.reduce((a,b)=>a+b.getSpeed(),0)));
 				this._updateSize();
 			},
 			"move":function(event)
 			{
-				µ.logger.info("downloadEvent move:",event);
+				µ.logger.debug("downloadEvent move:",event);
 				let data=JSON.parse(event.data);
 				let items=data.items.map(d=>this.findByClassID(d.objectType,d.ID));
 				let parent=null;
@@ -215,7 +220,7 @@
 			},
 			"sort":function(event)
 			{
-				µ.logger.info("downloadEvent sort:",event);
+				µ.logger.debug("downloadEvent sort:",event);
 				let data=JSON.parse(event.data);
 				let items=data.map(d=>this.findByClassID(d.objectType,d.ID));
 				let parent=items[0].getParent("package");
@@ -275,8 +280,8 @@
 				sizeEvent.states[state]=size;
 				totalSizeEvent.states[state]=totalSize;
 			}
-			this.report(new DownloadTable.SizeStateEvent(sizeEvent));
-			this.report(new DownloadTable.TotalSizeStateEvent(totalSizeEvent));
+			this.reportEvent(new DownloadTable.SizeStateEvent(sizeEvent));
+			this.reportEvent(new DownloadTable.TotalSizeStateEvent(totalSizeEvent));
 		},
 		findByClassID:function(objectType,ID)
 		{

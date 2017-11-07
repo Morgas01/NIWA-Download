@@ -3,7 +3,6 @@
 
 	SC=SC({
 		adopt:"adopt",
-		Download:require.bind(null,"../lib/Download"),
     	File:"File",
     	FileUtils:"File.util",
     	JsonConnector:"DB/jsonConnector",
@@ -15,9 +14,13 @@
     	flatten:"flatten",
     	rescope:"rescope",
     	flatten:"flatten",
-    	prepareItems:require.bind(null,"../lib/prepareItems"),
-    	ServiceResult:"ServiceResult",
+    	ServiceResult:"ServiceResult"
     });
+    
+    µ.shortcut({
+		Download:require.bind(null,"../lib/Download"),
+    	prepareItems:require.bind(null,"../lib/prepareItems")
+    },SC);
 
     let delegateID=0;
     let delegateMap=new Map();
@@ -460,6 +463,15 @@
     		if(!this.isDownloadNotRunning(download)) return Promise.reject("download already running");
 
     		return trueOrReject(this.isDownloadReady(Array.from(this.runningDownloadMap.keys()),download))
+    		.then(()=>{
+    			if(download.ID==null)
+    			{
+					return this.dbConnector.then(function(dbc)
+					{
+						return dbc.save(download);
+					});
+				}
+    		})
     		.then(()=>
     		{
 				download.state=SC.Download.states.RUNNING;

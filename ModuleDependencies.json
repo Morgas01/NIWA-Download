@@ -3,13 +3,15 @@
 		"deps": [],
 		"uses": [
 			"request",
-			"gui.dialog",
+			"gui.Dialog",
 			"gui.TableConfig",
 			"Promise"
 		]
 	},
 	"js/downloadTable.js": {
-		"deps": [],
+		"deps": [
+			"StateEvent"
+		],
 		"uses": [
 			"gui.TreeTable",
 			"gui.TreeTableConfig.Select",
@@ -21,12 +23,11 @@
 			"array.remove",
 			"request",
 			"adopt",
-			"Promise",
-			"gui.dialog",
+			"gui.Dialog",
 			"gui.selectionTree",
 			"gui.TableConfig.Select",
-			"equals",
-			"flatten"
+			"gui.Table",
+			"EventReporterPatch"
 		]
 	},
 	"lib/Download.js": {
@@ -44,6 +45,20 @@
 	},
 	"nodeJs/Manager.js": {
 		"deps": [],
-		"uses": []
+		"uses": [
+			"adopt",
+			"File",
+			"File.util",
+			"DB/jsonConnector",
+			"ObjectConnector",
+			"errorSerializer",
+			"Promise",
+			"NodePatch",
+			"equals",
+			"flatten",
+			"rescope",
+			"flatten",
+			"ServiceResult"
+		]
 	}
 }
