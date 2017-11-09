@@ -14,7 +14,8 @@
     	flatten:"flatten",
     	rescope:"rescope",
     	flatten:"flatten",
-    	ServiceResult:"ServiceResult"
+    	ServiceResult:"ServiceResult",
+    	niwaWorkDir:"niwaWorkDir"
     });
     
     µ.shortcut({
@@ -25,16 +26,16 @@
     let delegateID=0;
     let delegateMap=new Map();
 
-    let delegateDownload=function(appName,download,onUpdate,manager)
+    let delegateDownload=function(context,download,onUpdate,manager)
     {
     	let delegateInfo={
-    		appName:appName,
+    		context:context,
     		ID:delegateID++,
     		onUpdate:onUpdate,
     		manager:manager
     	};
     	delegateMap.set(delegateInfo.ID,delegateInfo);
-    	let p=worker.ask(appName,"receiveDownload",{
+    	let p=worker.ask(context,"receiveDownload",{
     		ID:delegateInfo.ID,
     		download:download,
     		objectType:download.objectType
@@ -42,17 +43,17 @@
     	p.catch(()=>delegateMap.delete(delegateInfo.ID));
     	return p;
     }
-    worker.updateDelegatedDownload=function(update,appName)
+    worker.updateDelegatedDownload=function(update,context)
 	{
 		let delegateInfo=delegateMap.get(update.remoteID);
 
 		if(!delegateInfo) µ.logger.error("no delegate info");
-		else if(delegateInfo.appName!=appName) µ.logger.error("wrong delegate app");
+		else if(delegateInfo.context!=context) µ.logger.error("wrong delegate app");
 		else
 		{
 			update.ID=update.remoteID;
 			delete update.remoteID;
-			delete update.appName;
+			delete update.context;
 			delete update.packageID;
 			delegateInfo.onUpdate.call(delegateInfo.manager,update);
 			if(update.state!==SC.Download.states.RUNNING) delegateMap.delete(update.ID);
@@ -77,7 +78,7 @@
 				DBClassDictionary:[],// standard Download and Package is always added
 				storagePath:"storage/downloads.json", // set to false to disable persistance
 				jsonConnectorParam:null,
-				accept:null, // function(download,appName) to accept downloads from other apps; returns true or a Promise resolving to true to accept
+				accept:null, // function(download,context) to accept downloads from other apps; returns true or a Promise resolving to true to accept
 				filter:null, // function(running[],download) to determinate if download is ready to download NOW; returns true or a Promise resolving to true to start download
 				download:null, // function(signal,download) to actually download the file; resolve or reject the signal to conclude the download
 				maxDownloads:0, // n<=0 no restriction
@@ -109,7 +110,7 @@
 			if(!options.storagePath) this.dbConnector=Promise.resolve(new SC.ObjectConnector());
 			else
 			{
-				let storageFile= SC.File.stringToFile(options.storagePath);
+				let storageFile=new SC.File(SC.niwaWorkDir).changePath(options.storagePath);
 				this.dbConnector=SC.FileUtils.enshureDir(storageFile.clone().changePath("..")).then(()=>
 				{
 					let dbErrors=this.dbErrors;
@@ -439,9 +440,9 @@
     		download.time=Date.now();
     		let data=download.toUpdateJSON();
     		this.notify("update",{[download.objectType]:[data]});
-    		if (download.appName)
+    		if (download.context)
     		{
-    			worker.ask(download.appName,"updateDelegatedDownload",data)
+    			worker.ask(download.context,"updateDelegatedDownload",data)
     			.catch(e=>µ.logger.error({error:e},"updateDelegatedDownload failed"));
     		}
     	},
@@ -500,7 +501,7 @@
 					this.dbConnector.then(dbc=>
 					{
 						let p;
-						if(download.appName)
+						if(download.context)
 						{
 							p=dbc.delete(this.DBClassDictionary[download.objectType],[download]).catch(e=>µ.logger.error({error:e},"failed to delete completed delegate download"));
 							this.notify("delete",SC.prepareItems.toDictionary([download]));
@@ -513,11 +514,11 @@
 				return true;
     		});
     	},
-    	receiveDownload:function(data,appName)
+    	receiveDownload:function(data,context)
     	{
-			data.appName=appName;
+			data.context=context;
 			data.download.remoteID=data.ID;
-			data.download.appName=appName;
+			data.download.context=context;
 			delete data.download.ID;
 			delete data.download.packageID;
 			let downloadClass=this.DBClassDictionary[data.objectType];
@@ -525,13 +526,13 @@
 			let download=new downloadClass();
 			download.fromJSON(data.download);
 
-			return trueOrReject(this.accept(download,appName))
+			return trueOrReject(this.accept(download,context))
 			.then(()=>this.add([download]))
 			.then(()=>this.startDownload(download));
     	},
-    	delegateDownload:function(appName,download,onUpdate)
+    	delegateDownload:function(context,download,onUpdate)
     	{
-    		return delegateDownload(appName,download,onUpdate,this);
+    		return delegateDownload(context,download,onUpdate,this);
     	},
     	_trigger:function()
     	{
@@ -540,10 +541,10 @@
     		if(this.maxDownloads!=0&&this.runningDownloadMap.size>=this.maxDownloads) return Promise.resolve();
     		//TODO queue?
     		let dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key])
-    		let triggerPromise=this.dbConnector.then(async dbc=>
+    		return this.dbConnector.then(async dbc=>
     		{
     			//load all dbClasses on root
-    			let data=SC.flatten(await Promise.all(dbClasses.map(dbClass=>dbc.load(dbClass,{packageID:SC.eq.unset()}))))
+    			let data=SC.flatten(await Promise.all(dbClasses.map(dbClass=>dbc.load(dbClass,{packageID:SC.eq.unset()}))));
 				let sortedData=data.sort(SC.Download.sortByOrderIndex);
 				try
 				{
@@ -564,7 +565,7 @@
 								dbc.loadChildren(item,"subPackages")
 							]).then(function()
 							{
-								sortedData.push(index+1,0,...item.getItems()); //insert sub items as next items
+								sortedData.splice(index+1,0,...item.getItems()); //insert sub items as next items
 								return "loaded sub items";
 							},
 							function(error)
@@ -578,12 +579,14 @@
 				}
 				catch(e)
 				{
-					if(e instanceof SC.Download) µ.logger.info("triggered download");
-					else µ.logger.error(e);
+					if(e instanceof SC.Download)
+					{
+						µ.logger.info("triggered download "+e.name);
+						this._trigger();
+					}
+					else return Promise.reject(e);
 				}
     		});
-    		triggerPromise.then(this._trigger,µ.logger.error);
-    		return triggerPromise;
     	}
 	});
 

@@ -62,6 +62,8 @@
 			.group("class","objectType",sub=>sub.map("ID","ID"))
 			.filter("statistics",obj=>obj instanceof SC.Download,f=>f.group("state","state"));
 
+			this.reportEvent(new DownloadTable.SpeedStateEvent({current:0,average:0}));
+
 			this.connect();
 		},
 		connect:function()
@@ -154,8 +156,16 @@
 				this.organizer.update(parents);
 
 				// update stateListener
-				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).values;
-				this.reportEvent(new DownloadTable.SpeedStateEvent(running.reduce((a,b)=>a+b.getSpeed(),0)));
+				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).getValues();
+				let state=running.reduce((obj,download)=>
+				{
+					obj.current+=download.getCurrentSpeed();
+					obj.average+=download.getSpeed();
+					return obj;
+				},
+				{current:0,average:0}
+				);
+				this.reportEvent(new DownloadTable.SpeedStateEvent(state));
 				this._updateSize();
 			},
 			"move":function(event)
