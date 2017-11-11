@@ -575,7 +575,7 @@
 							});
 						}
 					});
-					µ.logger.info({results:results},"could not trigger download");
+					µ.logger.debug({results:results},"could not trigger download");
 				}
 				catch(e)
 				{

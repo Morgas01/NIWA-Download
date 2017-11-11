@@ -156,16 +156,19 @@
 				this.organizer.update(parents);
 
 				// update stateListener
-				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING).getValues();
-				let state=running.reduce((obj,download)=>
+				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING);
+				if(running)
 				{
-					obj.current+=download.getCurrentSpeed();
-					obj.average+=download.getSpeed();
-					return obj;
-				},
-				{current:0,average:0}
-				);
-				this.reportEvent(new DownloadTable.SpeedStateEvent(state));
+					let state=running.getValues().reduce((obj,download)=>
+					{
+						obj.current+=download.getCurrentSpeed();
+						obj.average+=download.getSpeed();
+						return obj;
+					},
+					{current:0,average:0}
+					);
+					this.reportEvent(new DownloadTable.SpeedStateEvent(state));
+				}
 				this._updateSize();
 			},
 			"move":function(event)
@@ -486,34 +489,25 @@
 		},
 		"speed":function speed(cell,data)
 		{
-			if (cell.dataset.size&&cell.dataset.time&&data instanceof SC.Download)
+			if (data instanceof SC.Download)
 			{
-				cell.dataset.title=SC.Download.formatFilesize(data.getCurrentSpeed(cell.dataset.size,cell.dataset.time))+"/s";
+				cell.dataset.title=SC.Download.formatFilesize(data.getCurrentSpeed())+"/s";
 			}
 			if(data.size)cell.textContent=SC.Download.formatFilesize(data.getSpeed())+"/s";
-
-			cell.dataset.size=data.size;
-			cell.dataset.time=data.time;
 		},
 		"time":function time(cell,data)
 		{
 			if(data instanceof SC.Download)
 			{
-				if (cell.dataset.size&&cell.dataset.time)
+				if(data.time)
 				{
 					let remaining=data.filesize-data.size;
-					let title=getTimeString(remaining/data.getCurrentSpeed(cell.dataset.size,cell.dataset.time)*1000)+"\n";
+					let title=getTimeString(remaining/data.getCurrentSpeed()*1000)+"\n";
 					title+=getTimeString(remaining/data.getSpeed()*1000);
 
 					cell.dataset.title=title;
-				}
-				if(data.time)
-				{
 					cell.textContent=getTimeString(data.time-data.startTime);
 				}
-
-				cell.dataset.size=data.size;
-				cell.dataset.time=data.time;
 			}
 			else if(data.getSpeed()>0)
 			{
