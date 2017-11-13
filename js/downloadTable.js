@@ -116,7 +116,7 @@
 					this.treeTable.add(item,item.getParent("package"));
 				});
 
-				this._updateTotalSize();
+				this._updateSize();
 			},
 			"delete":function(event)
 			{
