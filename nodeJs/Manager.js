@@ -110,7 +110,7 @@
 			if(!options.storagePath) this.dbConnector=Promise.resolve(new SC.ObjectConnector());
 			else
 			{
-				let storageFile=new SC.File(SC.niwaWorkDir).changePath(options.storagePath);
+				let storageFile=new SC.File(SC.niwaWorkDir).changePath("work").changePath(options.storagePath);
 				this.dbConnector=SC.FileUtils.enshureDir(storageFile.clone().changePath("..")).then(()=>
 				{
 					let dbErrors=this.dbErrors;
