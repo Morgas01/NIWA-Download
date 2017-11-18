@@ -512,7 +512,8 @@
 			else if(data.getSpeed()>0)
 			{
 				let remaining=data.filesize-data.size
-				cell.textContent=getTimeString(remaining/data.getSpeed()*1000);
+				cell.dataset.title=getTimeString(remaining/data.getSpeed()*1000);
+				cell.textContent=getTimeString(data.getRemainingSize()/data.getSpeed()*1000);
 			}
 		}
 	};
