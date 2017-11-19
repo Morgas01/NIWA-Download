@@ -76,7 +76,7 @@
 			options=SC.adopt({
 				eventName:"downloads",
 				DBClassDictionary:[],// standard Download and Package is always added
-				storagePath:"storage/downloads.json", // set to false to disable persistance
+				storagePath:"downloads.json", // set to false to disable persistance
 				jsonConnectorParam:null,
 				accept:null, // function(download,context) to accept downloads from other apps; returns true or a Promise resolving to true to accept
 				filter:null, // function(running[],download) to determinate if download is ready to download NOW; returns true or a Promise resolving to true to start download
@@ -110,7 +110,7 @@
 			if(!options.storagePath) this.dbConnector=Promise.resolve(new SC.ObjectConnector());
 			else
 			{
-				let storageFile=new SC.File(SC.niwaWorkDir).changePath("work").changePath(options.storagePath);
+				let storageFile=new SC.File(SC.niwaWorkDir).changePath("work/"+worker.context).changePath(options.storagePath);
 				this.dbConnector=SC.FileUtils.enshureDir(storageFile.clone().changePath("..")).then(()=>
 				{
 					let dbErrors=this.dbErrors;
