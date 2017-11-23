@@ -450,12 +450,18 @@
 		},
 		"filepath":function filepath(cell,data)
 		{
+			let div=cell.children[0];
+			if(!div)
+			{
+				div=document.createElement("DIV");
+				cell.appendChild(div);
+			}
 			if(data.filepath)
 			{
 				let sep=(data.filepath.match(/[\\\/]/)||"/")[0];
-				cell.textContent=data.filepath+sep+data.filename;
+				div.textContent=data.filepath+sep+data.filename;
 			}
-			else cell.textContent=data.filename||"";
+			else div.textContent=data.filename||"";
 		},
 		"messages":function messages(cell,data)
 		{
