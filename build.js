@@ -1,4 +1,4 @@
-require("Morgas");
+require("morgas");
 
 let SC=µ.shortcut({
 	File:"File",
