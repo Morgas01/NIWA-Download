@@ -36,7 +36,8 @@
 			"DBField"
 		],
 		"uses": [
-			"DBRel"
+			"DBRel",
+			"metricUnit"
 		]
 	},
 	"lib/prepareItems.js": {
@@ -58,7 +59,8 @@
 			"flatten",
 			"rescope",
 			"flatten",
-			"ServiceResult"
+			"ServiceResult",
+			"niwaWorkDir"
 		]
 	}
 }
