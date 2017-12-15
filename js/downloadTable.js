@@ -14,7 +14,7 @@
 		rq:"request",
 		adopt:"adopt",
 		dlg:"gui.Dialog",
-		stree:"gui.selectionTree",
+		stree:"gui.Tree.Select",
 		TableConfig:"gui.TableConfig.Select",
 		Table:"gui.Table",
 		ReporterPatch:"EventReporterPatch"
@@ -321,9 +321,13 @@
 				downloads:SC.prepareItems.toDictionary(downloads,false)
 			});
 		},
-		createPackage:function()
+		createPackage:function(name,items=[],packageClass=Package)
 		{
-			//TODO
+			return this.apiCall("createPackage",{
+				name:name,
+				items:SC.prepareItems.toDictionary(items,false),
+				packageClass:packageClass,
+			});
 		},
 		getSelected:function()
 		{
@@ -531,7 +535,7 @@
 			name:"root",
 			getChildren:()=>roots
 		};
-		let tree=SC.stree(root,function(element,package)
+		let tree=new SC.stree(root,function(element,package)
 		{
 			element.textContent=package.name;
 			//TODO disable selected packages and its children
@@ -539,12 +543,12 @@
 			childrenGetter:c=>c.getChildren("subPackages"),
 			radioName:"moveTarget"
 		});
-		tree.expand(true,true);
+		tree.expandRoots(true);
 		return new Promise(function(resolve,reject)
 		{
 			new SC.dlg(function(container)
 			{
-				container.appendChild(tree);
+				container.appendChild(tree.element);
 				let okBtn=document.createElement("button");
 				okBtn.textContent=okBtn.dataset.action="OK";
 				container.appendChild(okBtn);

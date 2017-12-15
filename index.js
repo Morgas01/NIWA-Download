@@ -13,12 +13,6 @@
 			µ.addModuleRegister(niwaDownloads.moduleRegister,niwaDownloads.dir);
 			return niwaDownloads;
 		},
-		addToDependencyParser:function(parser)
-		{
-			parser.addModuleRegister(niwaDownloads.moduleRegister,niwaDownloads.dir)
-			.addModuleDependencies(niwaDownloads.moduleDependencies,niwaDownloads.dir);
-			return niwaDownloads;
-		},
 		registerLess:function()
 		{
 			worker.less.options.paths.push(niwaDownloads.lessDir);

@@ -24,7 +24,7 @@
 			"request",
 			"adopt",
 			"gui.Dialog",
-			"gui.selectionTree",
+			"gui.Tree.Select",
 			"gui.TableConfig.Select",
 			"gui.Table",
 			"EventReporterPatch"
