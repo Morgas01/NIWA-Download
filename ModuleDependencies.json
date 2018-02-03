@@ -1,5 +1,5 @@
 {
-	"js/checkDbErrors.js": {
+	"NIWA-Download.checkDbErrors": {
 		"deps": [],
 		"uses": [
 			"request",
@@ -8,7 +8,7 @@
 			"Promise"
 		]
 	},
-	"js/downloadTable.js": {
+	"NIWA-Download.DownloadTable": {
 		"deps": [
 			"StateEvent"
 		],
@@ -30,7 +30,7 @@
 			"EventReporterPatch"
 		]
 	},
-	"lib/Download.js": {
+	"NIWA-Download.Download": {
 		"deps": [
 			"DBObj",
 			"DBField"
@@ -40,11 +40,11 @@
 			"metricUnit"
 		]
 	},
-	"lib/prepareItems.js": {
+	"NIWA-Download.prepareItems": {
 		"deps": [],
 		"uses": []
 	},
-	"nodeJs/Manager.js": {
+	"NIWA-Download.Manager": {
 		"deps": [],
 		"uses": [
 			"adopt",
@@ -58,7 +58,6 @@
 			"equals",
 			"flatten",
 			"rescope",
-			"flatten",
 			"ServiceResult",
 			"niwaWorkDir"
 		]
