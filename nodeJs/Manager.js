@@ -460,10 +460,11 @@
     	},
     	startDownload:function(download)
     	{
+    		let args=Array.from(arguments);
     		µ.logger.debug("startDownload",download.name);
     		if(!this.isDownloadNotRunning(download)) return Promise.reject("download already running");
 
-    		return trueOrReject(this.isDownloadReady(Array.from(this.runningDownloadMap.keys()),download))
+    		return trueOrReject(this.isDownloadReady(Array.from(this.runningDownloadMap.keys()),...args))
     		.then(()=>{
     			if(download.ID==null)
     			{
@@ -479,7 +480,7 @@
 				this.updateDownload(download);
 				let runningInfo={promise:null};
 				this.runningDownloadMap.set(download,runningInfo);
-				runningInfo.promise=new SC.Promise(this.download,{args:[download],scope:this});
+				runningInfo.promise=new SC.Promise(this.download,{args:args,scope:this});
 				runningInfo.promise.then(function()
 				{
 					if(download.state==SC.Download.states.RUNNING)
