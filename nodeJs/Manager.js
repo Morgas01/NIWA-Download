@@ -4,7 +4,7 @@
 	SC=SC({
 		adopt:"adopt",
     	File:"File",
-    	FileUtils:"File.util",
+    	FileUtils:"File/util",
     	JsonConnector:"DB/jsonConnector",
     	ObjectConnector:"ObjectConnector",
     	es:"errorSerializer",

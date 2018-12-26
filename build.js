@@ -3,7 +3,7 @@ require("morgas.gui");
 
 let SC=µ.shortcut({
 	File:"File",
-	util:"File.util",
+	util:"File/util",
 	Promise:"Promise",
 	itAs:"iterateAsync",
 	moduleRegister:"Morgas.ModuleRegister",
@@ -20,7 +20,7 @@ let root = new SC.File(__dirname);
 .addSource(root.clone().changePath("nodeJs"))
 .addProvidedModules(Object.keys(SC.moduleRegister))
 .addProvidedModules(Object.keys(SC.moduleRegisterGui))
-.addProvidedModules(["File","File.util","DB/jsonConnector","errorSerializer"]) //morgas nodejs
+.addProvidedModules(["File","File/util","DB/jsonConnector","errorSerializer"]) //morgas nodejs
 .addProvidedModules(["ServiceResult","niwaWorkDir"]) //NIWA
 .parse(root)
 .then(function(result)

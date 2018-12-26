@@ -49,7 +49,7 @@
 		"uses": [
 			"adopt",
 			"File",
-			"File.util",
+			"File/util",
 			"DB/jsonConnector",
 			"ObjectConnector",
 			"errorSerializer",
