@@ -387,7 +387,7 @@
 									let parent=package;
 									while(parent=parent.getParent("package")) toDelete.delete(parent);
 								}
-							},parent=>parent.getChildren("subPackages"));
+							},{childrenGetter:parent=>parent.getChildren("subPackages")});
 							return Array.from(toDelete);
 						}))
 						.then(SC.flatten)
