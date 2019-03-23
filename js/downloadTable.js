@@ -512,11 +512,9 @@
 				if(data.time)
 				{
 					let remaining=data.filesize-data.size;
-					let title=getTimeString(remaining/data.getCurrentSpeed()*1000)+"\n";
-					title+=getTimeString(remaining/data.getSpeed()*1000);
-
+					let title=getTimeString(data.time-data.startTime)+"\n"+getTimeString(remaining/data.getCurrentSpeed()*1000);
 					cell.dataset.title=title;
-					cell.textContent=getTimeString(data.time-data.startTime);
+					cell.textContent=getTimeString(remaining/data.getSpeed()*1000);
 				}
 			}
 			else if(data.getSpeed()>0)
