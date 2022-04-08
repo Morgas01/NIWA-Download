@@ -1,6 +1,6 @@
 {
 	"name": "niwa-download",
-	"version": "0.8.7",
+	"version": "0.8.8",
 	"description": "basic download handling for NIWA applications",
 	"homepage": "https://github.com/Morgas01/NIWA-Download",
 	"bugs": {
@@ -13,13 +13,14 @@
 		"url": "https://github.com/Morgas01/NIWA-Download.git"
 	},
 	"devDependencies": {
-		"morgas": "^0.8.3",
-		"morgas.gui": "^0.8.4"
+		"morgas": "^0.8.9",
+		"morgas.gui": "^0.8.9",
+		"niwa": "^0.8.8"
 	},
 	"scripts": {
 		"build": "node build"
 	},
 	"peerDependencies":{
-		"niwa": "^0.8.6"
+		"niwa": "^0.8.8"
 	}
 }

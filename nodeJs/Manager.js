@@ -1,6 +1,5 @@
 (function(µ,SMOD,GMOD,HMOD,SC){
 
-
 	SC=SC({
 		adopt:"adopt",
     	File:"File",
@@ -601,7 +600,7 @@
     	{
     		return Promise.reject(new SC.ServiceResult({data:"no data was send",status:400}));
     	}
-    	return Promise.resolve(param.data);
+    	return Promise.resolve(JSON.parse(param.data));
     };
 	let trueOrReject=function(value)
 	{
@@ -615,7 +614,7 @@
 		}
 		else if(value===true) return Promise.resolve(true);
 		return Promise.reject(value);
-	}
+	};
 
     // [this] is a Manager instance
 	let SERVICEMETHODS={
@@ -720,40 +719,6 @@
 			{
 				if(!data||Object.keys(data).length==0) return Promise.reject("no items selected");
 				return this.loadClassIDs(data).then(items=>this.sort(items));
-				/*
-				let dbClasses=Object.keys(this.DBClassDictionary).map(key=>this.DBClassDictionary[key]);
-				let loadPattern={packageID:data.packageID!=null?data.packageID:SC.eq.unset()};
-
-				return this.dbConnector.then(dbc=>Promise.all(dbClasses.map(c=>dbc.load(c,loadPattern))))
-				.then(downloads=>Array.prototype.concat.apply(Array.prototype,downloads))//flatten
-				.then(function(items)
-				{
-					items.sort(SC.Download.sortByOrderIndex);
-					let sortingItems=items.slice();
-					let index=0;
-					for (let sortItem of data.items)
-					{
-						for(let i=0;i<sortingItems.length;i++)
-						{
-							if(sortingItems[i].ID==sortItem.ID&&sortingItems[i].objectType===sortItem.objectType)
-							{
-								sortingItems[i].orderIndex=index++;
-								sortingItems.splice(i,1);
-								break;
-							}
-						}
-					}
-					for(let unsortedItem of sortingItems)
-					{
-						unsortedItem.orderIndex=index++;
-					}
-					return items;
-				})
-				.then(sortedItem=>
-				{
-					return this.dbConnector.then(dbc=>dbc.save(sortedItem))
-					.then(()=>this.notify("sort",SC.prepareItems.toClassIDs(sortedItem)));
-				});*/
 			});
 		},
 		autoTrigger:function(param)
@@ -761,7 +726,7 @@
 			if(param.method==="GET") return this.autoTriggger;
 			else if (param.method==="POST")
 			{
-				this.setAutoTrigger(param.data);
+				this.setAutoTrigger(JSON.parse(param.data));
 				return Promise.resolve();
 			}
 			else

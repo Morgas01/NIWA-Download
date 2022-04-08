@@ -43,23 +43,5 @@
 	"NIWA-Download.prepareItems": {
 		"deps": [],
 		"uses": []
-	},
-	"NIWA-Download.Manager": {
-		"deps": [],
-		"uses": [
-			"adopt",
-			"File",
-			"File.util",
-			"DB/jsonConnector",
-			"ObjectConnector",
-			"errorSerializer",
-			"Promise",
-			"NodePatch",
-			"equals",
-			"flatten",
-			"rescope",
-			"ServiceResult",
-			"niwaWorkDir"
-		]
 	}
 }

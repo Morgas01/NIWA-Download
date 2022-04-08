@@ -11,3 +11,5 @@ build/
 logs/
 temp/
 storage/
+test/niwa/logs
+test/niwa/shed
