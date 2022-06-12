@@ -3,11 +3,13 @@
 	let StateEvent=GMOD("StateEvent");
 
 	SC=SC({
+		LiveDataSource:"LiveDataSource",
+		ReporterPatch:"EventReporterPatch",
+		DBObj:"DBObj",
 		TreeTable:"gui.TreeTable",
 		Config:"gui.TreeTableConfig.Select",
 		Download:"NIWA-Download.Download",
 		rs:"rescope",
-		DBObj:"DBObj",
 		Org:"Organizer",
 		prepareItems:"NIWA-Download.prepareItems",
 		arrayRemove:"array.remove",
@@ -17,7 +19,6 @@
 		stree:"gui.Tree.Select",
 		TableConfig:"gui.TableConfig.Select",
 		Table:"gui.Table",
-		ReporterPatch:"EventReporterPatch"
 	});
 
 	let orderByIndex=(a,b)=>
@@ -38,20 +39,20 @@
 	 * If you omit this column you have to set it manually.
 	 */
 	let DownloadTable=µ.Class({
-		constructor:function(columns,options)
+		constructor:function({
+			columns=Object.keys(DownloadTable.baseColumns),
+			apiPath="rest/downloads",
+			eventName="downloads",
+			DBClasses=[]
+		}={})
 		{
 			new SC.ReporterPatch(this,[DownloadTable.SpeedStateEvent,DownloadTable.SizeStateEvent,DownloadTable.TotalSizeStateEvent]);
 
-			columns=(columns||Object.keys(DownloadTable.baseColumns)).map(c=>(c in DownloadTable.baseColumns)?DownloadTable.baseColumns[c]:c) //map strings to baseColumn function
+			columns=columns.map(c=>(c in DownloadTable.baseColumns)?DownloadTable.baseColumns[c]:c) //map strings to baseColumn function
 
-			this.options=SC.adopt({
-				apiPath:"rest/downloads",
-				eventName:"downloads",
-				DBClasses:[] // download && package
-			},options);
-
-			this.options.DBClasses.unshift(SC.Download,SC.Download.Package);
-			this.options.DBClasses=this.options.DBClasses.reduce((d,c)=>(d[c.prototype.objectType]=c,d),{}); //translate array into dictionary
+			this.apiPath=apiPath;
+			this.eventName=eventName;
+			this.DBClasses=new Map([].concat(DBClasses,SC.Download,SC.Download.Package).map(t=>[t.prototype.objectType,t]));
 
 			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems(),control:true}));
 			this.element=this.treeTable.getTable();
@@ -64,24 +65,20 @@
 
 			this.reportEvent(new DownloadTable.SpeedStateEvent({current:0,average:0}));
 
-			this.connect();
+			//TODO liveDataEvent
+			this.liveData=new SC.LiveDataSource({url:"event/"+this.eventName,parser:SC.DBObj.fromJSON,flattenParsed:1});
+			this.liveData.addEventListener("liveDataEvent",this._onDataEvent,{scope:this});
 		},
-		connect:function()
+		_onDataEvent(event)
 		{
-			this.eventSource=new EventSource("event/"+this.options.eventName);
-			window.addEventListener("beforeunload",()=>this.eventSource.close());
-
-			for(let [name,fn] of Object.entries(this.eventHandles))
-			{
-				this.eventSource.addEventListener(name,SC.rs(fn,this));
-			}
-
-			this.eventSource.addEventListener("ping",µ.logger.debug);
+			let type=event.type;
+			µ.logger.debug(`downloadEvent ${type}:`,event);
+			if(type in this.eventHandles) this.eventHandles[type].call(this,event);
+			else µ.logger.warn("#downloadTable001: no handle for event type "+type);
 		},
 		eventHandles:{
 			"error":function(error)
 			{
-				if(this.eventSource.readyState==EventSource.CLOSED) alert("connection lost");
 				µ.logger.error(error);
 			},
 			"init":function(event)
@@ -89,9 +86,7 @@
 				this.treeTable.clear();
 				this.organizer.clear();
 
-				µ.logger.debug("downloadEvent init:",event);
-				let data=JSON.parse(event.data);
-				let items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
+				let items=event.data;
 				SC.DBObj.connectObjects(items);
 				this.organizer.addAll(items);
 
@@ -102,17 +97,18 @@
 			},
 			"add":function(event)
 			{
-				µ.logger.debug("downloadEvent add:",event);
-				let data=JSON.parse(event.data);
-				let items=SC.prepareItems.fromDictionary(data,this.options.DBClasses);
+				let items=event.data;
 				this.organizer.add(items);
 				items.forEach(item=>
 				{
+					/*
 					if(item.packageID!=null)
 					{
 						let parent=this.findByClassID(item.relations["package"].relatedClass.prototype.objectType,item.packageID);
 						parent.connectObjects([item]);
 					}
+					 */
+					item.connectObjects(this.liveData.data);
 					this.treeTable.add(item,item.getParent("package"));
 				});
 

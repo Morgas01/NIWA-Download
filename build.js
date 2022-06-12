@@ -7,14 +7,15 @@ let SC=µ.shortcut({
 	Promise:"Promise",
 	itAs:"iterateAsync",
 	moduleRegister:"Morgas.ModuleRegister",
-	moduleRegisterGui:"Morgas.gui.ModuleRegister"
+	moduleRegisterGui:"Morgas.gui.ModuleRegister",
+	DependencyParser:"DependencyParser"
 });
 
 let root = new SC.File(__dirname);
 
 /*** dependencies ***/
 
-(new (require("morgas/lib/dependencyParser")))
+new SC.DependencyParser()
 .addSource(root.clone().changePath("js"))
 .addSource(root.clone().changePath("lib"))
 .addSource(root.clone().changePath("nodeJs"))

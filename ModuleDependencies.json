@@ -13,11 +13,13 @@
 			"StateEvent"
 		],
 		"uses": [
+			"LiveDataSource",
+			"EventReporterPatch",
+			"DBObj",
 			"gui.TreeTable",
 			"gui.TreeTableConfig.Select",
 			"NIWA-Download.Download",
 			"rescope",
-			"DBObj",
 			"Organizer",
 			"NIWA-Download.prepareItems",
 			"array.remove",
@@ -26,8 +28,7 @@
 			"gui.Dialog",
 			"gui.Tree.Select",
 			"gui.TableConfig.Select",
-			"gui.Table",
-			"EventReporterPatch"
+			"gui.Table"
 		]
 	},
 	"NIWA-Download.Download": {
@@ -41,6 +42,20 @@
 		]
 	},
 	"NIWA-Download.prepareItems": {
+		"deps": [],
+		"uses": []
+	},
+	"NIWA-Download.Manager": {
+		"deps": [],
+		"uses": [
+			"ObjectConnector",
+			"NIWA-Download.Download",
+			"equals",
+			"flatten",
+			"errorSerializer"
+		]
+	},
+	"NIWA-Download.ManagerRestApi": {
 		"deps": [],
 		"uses": []
 	}

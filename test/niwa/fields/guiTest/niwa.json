@@ -1,0 +1,4 @@
+{
+	"type": ["test","download"],
+	"setup": "setup.js"
+}

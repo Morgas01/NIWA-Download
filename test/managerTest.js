@@ -1,5 +1,5 @@
 require("morgas");
-let Manager = require("../nodeJs/Manager2");
+let Manager = require("../nodeJs/Manager");
 let Download= require("../lib/Download");
 
 //dummy worker
