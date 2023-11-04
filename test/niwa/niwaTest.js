@@ -1,8 +1,13 @@
 let NIWA=require("niwa");
 
 new NIWA({
-	yard:".",
+	yard:__dirname,
 	door:8765,
 	welcomeSign:"guiTest",
-	logLevel:"TRACE"
+	logLevel:"TRACE",
+	fields:[
+		{
+
+		}
+	]
 }).open().catch(e=>console.log("FATAL:",e));

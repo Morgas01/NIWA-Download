@@ -1,0 +1,13 @@
+{
+	"name": "download test",
+	"fields": [
+		{
+			"name": "guiTest",
+			"path": "fields/guiTest"
+		},
+		{
+			"name": "guiTest_child",
+			"path": "fields/guiTest"
+		}
+	]
+}

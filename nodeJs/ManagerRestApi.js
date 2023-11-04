@@ -18,7 +18,14 @@
 		getApi()
 		{
 			return {
-				add:this.restAddDownloads.bind(this)
+				add:this.restAddDownloads.bind(this),
+				//TODO
+				//delete
+				//sort
+				//move
+				//disable
+				//reset
+				//pause //set auto triggering of downloads
 			}
 		},
 		async restAddDownloads(param)

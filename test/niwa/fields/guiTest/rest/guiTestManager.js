@@ -11,23 +11,32 @@
 		eventSourceName:"downloads",
 		autoTriggger:false,
 		maxDownloads:2,
-		downloadMethod(download)
+		downloadMethod(download,triggerUpdate)
 		{
 			return new Promise((rs,rj)=>
 			{
 				setTimeout(function progress()
 				{
-					let nextSize=Math.max(download.filesize,(download.size||0)+download.filesize/(15+Math.random()*10));
+					let nextSize=Math.min(download.filesize,(download.size||0)+download.filesize*(Math.random()*10/100));
 					download.setSize(nextSize);
 					if(download.size===download.filesize)
 					{
-						download.state=SC.Download.states.DONE;
-						rs();
+						if(download.name==="BIG")
+						{
+							download.startTime=null;
+							download.setSize(0);
+							download.lastTime=null;
+						}
+						else
+						{
+							download.state=SC.Download.states.DONE;
+							rs();
+							return;
+						}
 					}
-					else
-					{
-						setTimeout(progress,100+Math.random()*100);
-					}
+
+					triggerUpdate(download);
+					setTimeout(progress,1000+Math.random()*2000);
 				},250);
 			});
 		}
@@ -37,6 +46,11 @@
 
 	module.exports=restApi.getApi();
 
-	mananger.add(new SC.Download({name:"initial",filesize:200,messages:["hello download"]}));
+	mananger.add(new SC.Download({name:"initial",filesize:100,messages:[{text:"hello download",time:Date.now()}]}));
+
+	if(!worker.config.name.includes("child"))
+	{
+		mananger.add(new SC.Download({name:"BIG",filesize:3E8,messages:[{text:"BIG START",time:Date.now()}]}));
+	}
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

@@ -13,7 +13,7 @@
 		"url": "https://github.com/Morgas01/NIWA-Download.git"
 	},
 	"devDependencies": {
-		"less": "^4.1.2",
+		"less": "^4.2.0",
 		"morgas": "^0.8.9",
 		"morgas.gui": "^0.8.9",
 		"niwa": "^0.8.8"

@@ -21,18 +21,6 @@
 		Table:"gui.Table",
 	});
 
-	let orderByIndex=(a,b)=>
-	{
-		let ai=a.orderIndex;
-		let bi=b.orderIndex;
-		if(ai==null)
-		{
-			if(bi==null) return 0;
-			return 1;
-		}
-		if(bi==null) return -1;
-		return ai-bi;
-	};
 
 	/**
 	 * base column name sets the data-state attribute of the row.
@@ -43,30 +31,43 @@
 			columns=Object.keys(DownloadTable.baseColumns),
 			apiPath="rest/downloads",
 			eventName="downloads",
-			DBClasses=[]
+			DBClasses=[],
+			autoUpdateSpeed=true,	//TODO name/consolidate
+			autoUpdateSize=true	//TODO name/consolidate
 		}={})
 		{
-			new SC.ReporterPatch(this,[DownloadTable.SpeedStateEvent,DownloadTable.SizeStateEvent,DownloadTable.TotalSizeStateEvent]);
+			new SC.ReporterPatch(this,[DownloadTable.SpeedStateEvent,DownloadTable.SizeStateEvent]);
 
 			columns=columns.map(c=>(c in DownloadTable.baseColumns)?DownloadTable.baseColumns[c]:c) //map strings to baseColumn function
 
 			this.apiPath=apiPath;
 			this.eventName=eventName;
 			this.DBClasses=new Map([].concat(DBClasses,SC.Download,SC.Download.Package).map(t=>[t.prototype.objectType,t]));
+			this.autoUpdateSpeed=autoUpdateSpeed;
+			this.autoUpdateSize=autoUpdateSize;
 
 			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems(),control:true}));
 			this.element=this.treeTable.getTable();
 			this.element.classList.add("downloadTable");
 
 			this.organizer=new SC.Org();
-			this.organizer.filter("roots",obj=>obj.packageID==null,f=>f.sort("orderIndex",orderByIndex))
+			this.organizer.filter("roots",obj=>obj.packageID==null,f=>f.sort("orderIndex",SC.Download.sortByOrderIndex))
 			.group("class","objectType",sub=>sub.map("ID","ID"))
 			.filter("statistics",obj=>obj instanceof SC.Download,f=>f.group("state","state"));
 
 			this.reportEvent(new DownloadTable.SpeedStateEvent({current:0,average:0}));
 
 			//TODO liveDataEvent
-			this.liveData=new SC.LiveDataSource({url:"event/"+this.eventName,parser:SC.DBObj.fromJSON,flattenParsed:1});
+			this.liveData=new SC.LiveDataSource({
+				url: "event/"+this.eventName,
+				parser: SC.DBObj.fromJSON,
+				flattenParsed: 1,
+				onChange:function(changed,old){old.fromJSON(changed)}
+				/*events:{ // maybe liveDataEvent eventsource message event => custom liveDataEvent sub type
+					move:this.eventHandles.move.bind(this),
+					sort:this.eventHandles.sort.bind(this)
+				}*/
+			});
 			this.liveData.addEventListener("liveDataEvent",this._onDataEvent,{scope:this});
 		},
 		_onDataEvent(event)
@@ -77,11 +78,11 @@
 			else µ.logger.warn("#downloadTable001: no handle for event type "+type);
 		},
 		eventHandles:{
-			"error":function(error)
+			error(error)
 			{
 				µ.logger.error(error);
 			},
-			"init":function(event)
+			init(event)
 			{
 				this.treeTable.clear();
 				this.organizer.clear();
@@ -93,9 +94,9 @@
 				this.organizer.getFilter("roots").getSort("orderIndex")
 				.forEach(entry=>this.treeTable.add(entry));
 
-				this._updateSize();
+				if(this.autoUpdateSize) this.updateSize();
 			},
-			"add":function(event)
+			add(event)
 			{
 				let items=event.data;
 				this.organizer.add(items);
@@ -112,37 +113,21 @@
 					this.treeTable.add(item,item.getParent("package"));
 				});
 
-				this._updateSize();
+				if(this.autoUpdateSize) this.updateSize();
 			},
-			"delete":function(event)
+			delete(event)
 			{
-				µ.logger.debug("downloadEvent delete:",event);
 				let data=JSON.parse(event.data);
 				let items=[];
 				for(let type in data) for(let ID of data[type]) items.push(this.findByClassID(type,ID));
 				this.organizer.remove(items);
 				items.forEach(i=>this.treeTable.remove(i));
+
+				if(this.autoUpdateSize) this.updateSize();
 			},
-			"update":function(event)
+			change(event)
 			{
-				µ.logger.debug("downloadEvent update:",event);
-				let data=JSON.parse(event.data);
-				let items=[];
-				for(let type in data)
-				{
-					for(let entry of data[type])
-					{
-						let item=this.findByClassID(type,entry.ID);
-						if(!item)
-						{
-							µ.logger.error(`could not find item ${type} with id ${entry.ID}`);
-							continue;
-						}
-						item.fromJSON(entry);
-						items.push(item);
-					}
-				}
-				let parents=new Set(items);
+				let parents=new Set(event.data);
 				for(let child of parents)
 				{
 					let parent=child.getParent("package")
@@ -152,24 +137,11 @@
 				this.organizer.update(parents);
 
 				// update stateListener
-				let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING);
-				if(running)
-				{
-					let state=running.getValues().reduce((obj,download)=>
-					{
-						obj.current+=download.getCurrentSpeed();
-						obj.average+=download.getSpeed();
-						return obj;
-					},
-					{current:0,average:0}
-					);
-					this.reportEvent(new DownloadTable.SpeedStateEvent(state));
-				}
-				this._updateSize();
+				if(this.autoUpdateSpeed) this.updateSpeed();
+				if(this.autoUpdateSize) this.updateSize();
 			},
-			"move":function(event)
+			move(event)
 			{
-				µ.logger.debug("downloadEvent move:",event);
 				let data=JSON.parse(event.data);
 				let items=data.items.map(d=>this.findByClassID(d.objectType,d.ID));
 				let parent=null;
@@ -227,9 +199,8 @@
 					});
 				}
 			},
-			"sort":function(event)
+			sort(event)
 			{
-				µ.logger.debug("downloadEvent sort:",event);
 				let data=JSON.parse(event.data);
 				let items=data.map(d=>this.findByClassID(d.objectType,d.ID));
 				let parent=items[0].getParent("package");
@@ -263,34 +234,45 @@
 				}
 			}
 		},
-		_updateSize:function()
+		updateSpeed()
+		{
+			let running=this.organizer.getFilter("statistics").getGroupPart("state",SC.Download.states.RUNNING);
+			if(!running) return;
+
+			let state=running.getValues().reduce((obj,download)=>
+				{
+					obj.current+=download.getCurrentSpeed();
+					obj.average+=download.getSpeed();
+					return obj;
+				},
+				{current:0,average:0}
+			);
+			this.reportEvent(new DownloadTable.SpeedStateEvent(state));
+			return state;
+		},
+		updateSize:function()
 		{
 			let states=this.organizer.getFilter("statistics").getGroupValues("state");
 
-			let sizeEvent={
-				total:0,
-				states:{}
-			};
-			let totalSizeEvent={
-				total:0,
-				states:{}
-			};
+			let eventData={
+				size:0,
+				filesize:0,
+				states:{},
+			}
 			for(let state of Object.values(SC.Download.states))
 			{
-				let size=0;
-				let totalSize=0;
+				let stateSize=0;
+				let stateFilesize=0;
 				if(state in states)
 				{
-					size=states[state].reduce((a,b)=>a+b.size,0);
-					totalSize=states[state].reduce((a,b)=>a+b.filesize,0);
+					stateSize=states[state].reduce((a,b)=>a+b.size,0);
+					stateFilesize=states[state].reduce((a,b)=>a+b.filesize,0);
 				}
-				sizeEvent.total+=size;
-				totalSizeEvent.total+=totalSize;
-				sizeEvent.states[state]=size;
-				totalSizeEvent.states[state]=totalSize;
+				eventData.size+=stateSize;
+				eventData.filesize+=stateFilesize;
+				eventData.states[state]={size:stateSize,filesize:stateFilesize};
 			}
-			this.reportEvent(new DownloadTable.SizeStateEvent(sizeEvent));
-			this.reportEvent(new DownloadTable.TotalSizeStateEvent(totalSizeEvent));
+			this.reportEvent(new DownloadTable.SizeStateEvent(eventData));
 		},
 		findByClassID:function(objectType,ID)
 		{
@@ -656,7 +638,6 @@
 
 	DownloadTable.SpeedStateEvent=StateEvent.implement("downloadSpeed");
 	DownloadTable.SizeStateEvent=StateEvent.implement("downloadSize");
-	DownloadTable.TotalSizeStateEvent=StateEvent.implement("downloadTotalSize");
 	SMOD("NIWA-Download.DownloadTable",DownloadTable);
 
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

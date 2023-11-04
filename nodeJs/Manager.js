@@ -81,7 +81,7 @@
 		update(downloads)
 		{
 			downloads=[].concat(downloads);
-			//TODO don't update running downloads
+			//TODO don't update running downloads ?
 			this.connector.save(downloads);
 			let add=[],change=[]
 			for(let entry of downloads)
@@ -94,7 +94,7 @@
 		},
 		eventUpdate(download)
 		{
-			this.eventTrigger("change",[download])
+			this.eventTrigger("change",[download.toUpdateJSON()])
 		},
 		isDownloadsMaxed()
 		{
@@ -178,7 +178,7 @@
 
 			download.state=SC.Download.states.RUNNING;
 			await this.update(download);
-			let downloadPromise=Promise.resolve(this.downloadMethod(download),this.eventUpdate.bind(this))
+			let downloadPromise=Promise.resolve(this.downloadMethod(download,this.eventUpdate.bind(this)))
 			.then(()=>
 			{
 				if(download.state===SC.Download.states.RUNNING)
