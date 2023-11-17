@@ -6,10 +6,14 @@
 		dTable1:"NIWA-Download.DownloadTable",
 		LiveDataSource:"LiveDataSource",
 		Download:"NIWA-Download.Download",
-		uDate:"date/format"
+		Client:"NIWA-Download.ClientRestApi",
+		uDate:"date/format",
+		action:"gui.actionize"
 	});
 
-	//*
+	//SMOD("index") prevent building warning
+
+
 	let table=new SC.dTable1();
 	document.body.appendChild(table.element);
 	let statistics=document.createElement("fieldset");
@@ -51,13 +55,56 @@
 </table>`
 	}
 
-
-
-
 	table.addEventListener("downloadSpeed",updateStatistics);
 	table.addEventListener("downloadSize",updateStatistics);
-	/*/
-	let dataSource=new SC.LiveDataSource({url:"event/downloads"});
-	dataSource.addEventListener("liveDataEvent",console.log);
-	//*/
+
+	let client=new SC.Client({baseUrl:"rest/guiTestManager"});
+	let actions={
+		async add()
+		{
+			let download = new SC.Download({name:"added",filesize:5**(Math.ceil(Math.random()*10)),messages:[{text:"added",time:Date.now()}]});
+			await client.add([download]);
+		},
+		async addWithPackage()
+		{
+			let package = new SC.Download.Package({name:"added package"});
+			let download = new SC.Download({name:"added",filesize:5*10**(Math.ceil(Math.random()*10)),messages:[{text:"added",time:Date.now()}]});
+			let subpackage = new SC.Download.Package({name:"sub package"});
+			let subDownload = new SC.Download({name:"added sub",filesize:5*10**(Math.ceil(Math.random()*10)),messages:[{text:"added sub",time:Date.now()}]});
+
+			package.addChild("subPackages",subpackage);
+			package.addChild("children",download);
+			subpackage.addChild("children",subDownload);
+			await client.add([package]);
+		},
+		delete()
+		{
+
+		},
+		reset()
+		{
+
+		},
+		disable()
+		{
+
+		},
+		pause()
+		{
+
+		},
+		sort()
+		{
+
+		},
+		move()
+		{
+
+		},
+	};
+	let actionsElement=document.createElement("DIV");
+	actionsElement.innerHTML=Object.keys(actions).map(a=>`<button data-action="${a}">${a}</button>`).join("");
+	document.body.insertBefore(actionsElement,table.element);
+	SC.action(actions,actionsElement);
+
 })(Morgas,Morgas.setModule,Morgas.getModule,Morgas.hasModule,Morgas.shortcut);

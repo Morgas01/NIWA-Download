@@ -22,7 +22,8 @@ new SC.DependencyParser()
 .addProvidedModules(Object.keys(SC.moduleRegister))
 .addProvidedModules(Object.keys(SC.moduleRegisterGui))
 .addProvidedModules(["File","File.util","DB/jsonConnector","errorSerializer"]) //morgas nodejs
-.addProvidedModules(["ServiceResult","niwaWorkDir"]) //NIWA
+.addProvidedModules(["ServiceResult"]) //NIWA
+.addProvidedModules(["niwaWorkDir"]) //for manager_old
 .parse(root)
 .then(function(result)
 {

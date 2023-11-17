@@ -23,7 +23,7 @@
 
 
 	/**
-	 * base column name sets the data-state attribute of the row.
+	 * base column "name" sets the data-state attribute of the row.
 	 * If you omit this column you have to set it manually.
 	 */
 	let DownloadTable=µ.Class({
@@ -78,6 +78,10 @@
 			else µ.logger.warn("#downloadTable001: no handle for event type "+type);
 		},
 		eventHandles:{
+			connect()
+			{
+				µ.logger.debug("connect");
+			},
 			error(error)
 			{
 				µ.logger.error(error);

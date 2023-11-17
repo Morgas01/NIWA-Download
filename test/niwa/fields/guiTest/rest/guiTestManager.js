@@ -44,7 +44,7 @@
 
 	let restApi=new SC.ManagerRestApi(mananger);
 
-	module.exports=restApi.getApi();
+	module.exports=restApi;
 
 	mananger.add(new SC.Download({name:"initial",filesize:100,messages:[{text:"hello download",time:Date.now()}]}));
 

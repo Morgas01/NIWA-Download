@@ -62,6 +62,14 @@
 				//TODO worker.method=method
 			}
 		},
+		setAutoTrigger(state)
+		{
+			this.autoTrigger=!!state;
+			if(this.autoTrigger)
+			{
+				this.triggerNextDownload();
+			}
+		},
 		/**
 		 * @param {Array.<Download,Download.Package>} downloads
 		 * @returns {Promise<void>}
@@ -81,14 +89,16 @@
 		update(downloads)
 		{
 			downloads=[].concat(downloads);
+
 			//TODO don't update running downloads ?
-			this.connector.save(downloads);
+
 			let add=[],change=[]
 			for(let entry of downloads)
 			{
 				if(entry.ID==null) add.push(entry)
 				else change.push(entry);
 			}
+			this.connector.save(downloads);
 			if(add.length>0) this.eventTrigger("add",add);
 			if(change.length>0) this.eventTrigger("change",change);
 		},
