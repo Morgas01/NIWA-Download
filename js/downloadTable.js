@@ -46,7 +46,7 @@
 			this.autoUpdateSpeed=autoUpdateSpeed;
 			this.autoUpdateSize=autoUpdateSize;
 
-			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems(),control:true}));
+			this.treeTable=new SC.TreeTable(new SC.Config(columns,{childrenGetter:i=>i.getItems(),control:false}));
 			this.element=this.treeTable.getTable();
 			this.element.classList.add("downloadTable");
 
@@ -62,7 +62,7 @@
 				url: "event/"+this.eventName,
 				parser: SC.DBObj.fromJSON,
 				flattenParsed: 1,
-				onChange:function(changed,old){old.fromJSON(changed)}
+				onChange:function(changed,old){old.fromJSON(changed)} // update downloads
 				/*events:{ // maybe liveDataEvent eventsource message event => custom liveDataEvent sub type
 					move:this.eventHandles.move.bind(this),
 					sort:this.eventHandles.sort.bind(this)
